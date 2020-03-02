@@ -131,10 +131,17 @@ class Target(StayAliveJitter):
 
             colx = target_col[0].position.x
 
-            if ballx < paddlex and colx < paddlex:
-                input.left = True
-            elif ballx > paddlex and colx > paddlex:
-                input.right = True
+            if ballx < paddlex:
+                if colx < paddlex:
+                    input.left = True
+                else: 
+                    input.right = True
+            elif ballx > paddlex: 
+                if colx > paddlex:
+                    input.right = True
+                else:
+                    input.left = True
+            
 
             return input
 
