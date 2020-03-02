@@ -1,1 +1,2 @@
 ctoybox
+git+git://github.com/toybox-rs/Toybox.git#egg=toybox

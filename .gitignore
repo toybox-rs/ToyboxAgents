@@ -1,0 +1,6 @@
+.env
+.vscode
+Toybox
+frames
+__pycache__
+*.mp4
