@@ -1,2 +1,2 @@
 ctoybox
-git+git://github.com/toybox-rs/Toybox.git#egg=toybox
+git+git://github.com/toybox-rs/Toybox.git@setup#egg=toybox
