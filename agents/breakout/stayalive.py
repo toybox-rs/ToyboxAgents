@@ -45,6 +45,8 @@ class SmarterStayAlive(Agent):
             elif ballx > paddlex and ballx > self.prev_ballx:
                 input.right = True
 
+            self.prev_ballx = ballx
+
         return input
 
 
@@ -56,11 +58,11 @@ class StayAliveJitter(Agent):
         self.prev_ballx = None
         super().__init__(toybox)
 
-    def get_action(self):
+    def get_action(self, intervention=None):
         input = Input()
         input.button1 = True
 
-        with breakout.BreakoutIntervention(self.toybox) as intervention:
+        with (intervention or breakout.BreakoutIntervention(self.toybox)) as intervention:
             game = intervention.game
             ballx = game.balls[0].position.x
             paddlex = game.paddle.position.x
@@ -73,6 +75,9 @@ class StayAliveJitter(Agent):
                 input.left = True
             elif ballx > paddlex and ballx > self.prev_ballx and random() > self.jitter:
                 input.right = True
+
+            self.prev_ballx = ballx
+            
         return input
 
 
@@ -94,10 +99,14 @@ class Target(StayAliveJitter):
             paddley = game.paddle.position.y
             paddle_width = game.paddle_width
 
-            is_close = abs(bally - paddley) < 0.2 * paddle_width
+            y_is_close = abs(bally - paddley) < paddle_width
+            x_is_close = abs(ballx - paddlex) < paddle_width
 
-            if intervention.num_bricks_remaining() == intervention.num_bricks() or not is_close:
-                return super().get_action()
+            if x_is_close and not y_is_close: return input
+
+            if intervention.num_bricks_remaining() == intervention.num_bricks():
+                print('execute jitter')
+                return super().get_action(intervention=intervention)
 
 
             # TARGETING TIME
@@ -144,10 +153,6 @@ class Target(StayAliveJitter):
             
 
             return input
-
-
-
-
 
 
 if __name__ == '__main__':
