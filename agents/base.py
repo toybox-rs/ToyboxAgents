@@ -18,9 +18,12 @@ class Agent(ABC):
         def next_file():
             global _frame_counter 
             _frame_counter += 1
-            return path + os.sep + self.name + str(_frame_counter).zfill(5) + '.png'
+            return path + os.sep + self.name + str(_frame_counter).zfill(5)
 
-        self.toybox.save_frame_image(next_file())
+        f = next_file()
+        self.toybox.save_frame_image(f + '.png')
+        with open(f)
+        self.toybox.state_to_json
         while not self.toybox.game_over() and _frame_counter < maxsteps:
             action = self.get_action()
             self.toybox.apply_action(action)
