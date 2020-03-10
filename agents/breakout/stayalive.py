@@ -2,6 +2,7 @@ from agents.base import Agent
 import toybox.interventions.breakout as breakout
 from ctoybox import Toybox, Input
 from random import random
+from numpy.random import shuffle
 
 class StayAlive(Agent):
     """The simplest agent. Reacts deterministically to the x position of the ball."""
@@ -88,7 +89,6 @@ class Target(StayAliveJitter):
         input.button1 = True
 
         with breakout.BreakoutIntervention(self.toybox) as intervention:
-            # if we haven't hit anything yet and the ball isn't close, default to StayAliveJitter
             game = intervention.game
 
             ball = game.balls[0]
@@ -99,46 +99,31 @@ class Target(StayAliveJitter):
             paddley = game.paddle.position.y
             paddle_width = game.paddle_width
 
+            dx = paddle_width // 4
+
             y_is_close = abs(bally - paddley) < paddle_width
             x_is_close = abs(ballx - paddlex) < paddle_width
 
-            if x_is_close and not y_is_close: return input
+            # If the ball isn't close, don't do anything
+            if not (x_is_close or y_is_close): return input
 
             if intervention.num_bricks_remaining() == intervention.num_bricks():
-                print('execute jitter')
+                # if we haven't hit anything yet and the ball isn't close, default to StayAliveJitter
                 return super().get_action(intervention=intervention)
 
 
             # TARGETING TIME
-            print('TARGET TIME')
             # get the column with the fewest bricks greater than zero
             # if there is one brick, stop early
-            target_col = None
-            num_target_col_alive = -1
 
-            for i in range(intervention.num_columns()):
-                this_col = intervention.get_column(i)
-                num_this_col_alive = len([int(brick.alive) for brick in this_col])
-
-                # set the first column
-                if target_col is None:
-                    target_col = this_col
-                    num_target_col_alive = len([int(brick.alive) for brick in target_col])
-                # don't want the target col to be an already-formed channel
-                elif num_target_col_alive == 0:
-                    target_col = this_col
-                    num_target_col_alive = num_this_col_alive
-                # don't want to set the target column to an already-formed channel
-                elif num_this_col_alive == 0:
-                    continue
-                elif num_this_col_alive < num_target_col_alive:
-                    target_col = this_col 
-                    num_target_col_alive = num_this_col_alive
-
-                if num_target_col_alive == 1:
-                    break
-
-            colx = target_col[0].position.x
+            # Start by shuffling the columns
+            columns = [intervention.get_column(i) for i in range(intervention.num_columns())]
+            shuffle(columns)
+            num_alive = [len([int(brick.alive) for brick in this_col]) for this_col in columns]
+            # Get list of potential targets -- i.e., columns that are not yet completed.
+            targets = sorted([t for t in zip(num_alive, columns) if t[0] > 0], key=lambda t: t[0])
+            # Target the column closest to completion
+            colx = targets[0].position.x
 
             if ballx < paddlex:
                 if colx < paddlex:
@@ -150,7 +135,6 @@ class Target(StayAliveJitter):
                     input.right = True
                 else:
                     input.left = True
-            
 
             return input
 
