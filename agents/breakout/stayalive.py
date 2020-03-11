@@ -84,6 +84,10 @@ class StayAliveJitter(Agent):
 
 class Target(StayAliveJitter):
 
+    def __init__(self, toybox:Toybox):
+        self.prev_bally = None
+        super().__init__(toybox)
+
     def get_action(self):
         input = Input()
         input.button1 = True
@@ -91,6 +95,9 @@ class Target(StayAliveJitter):
         with breakout.BreakoutIntervention(self.toybox) as intervention:
             game = intervention.game
 
+            if len(game.balls) == 0:
+                # We missed in the previous round; game over.
+                return   
             ball = game.balls[0]
             ballx = ball.position.x
             bally = ball.position.y
@@ -99,13 +106,16 @@ class Target(StayAliveJitter):
             paddley = game.paddle.position.y
             paddle_width = game.paddle_width
 
-            dx = paddle_width // 4
+            #dx = paddle_width // 4
 
-            y_is_close = abs(bally - paddley) < paddle_width
-            x_is_close = abs(ballx - paddlex) < paddle_width
+            y_is_close = abs(bally - paddley) < 1.5 * paddle_width
+            x_is_close = abs(ballx - paddlex) < 1.5 * paddle_width
 
             # If the ball isn't close, don't do anything
-            if not (x_is_close or y_is_close): return input
+            if not (x_is_close or y_is_close): 
+                self.prev_ballx = ballx
+                self.prev_bally = bally
+                return input
 
             if intervention.num_bricks_remaining() == intervention.num_bricks():
                 # if we haven't hit anything yet and the ball isn't close, default to StayAliveJitter
@@ -123,32 +133,55 @@ class Target(StayAliveJitter):
             # Get list of potential targets -- i.e., columns that are not yet completed.
             targets = sorted([t for t in zip(num_alive, columns) if t[0] > 0], key=lambda t: t[0])
             # Target the column closest to completion
-            colx = targets[0].position.x
+            colx = targets[0][1][0].position.x
 
+            print(self.frame_counter)
             if ballx < paddlex:
-                if colx < paddlex:
-                    input.left = True
+                if ballx < self.prev_ballx:
+                    if self.prev_ballx < colx:
+                        print('A')
+                        input.right = True
+                    else:
+                        print('B')
+                        input.left = True
                 else: 
-                    input.right = True
-            elif ballx > paddlex: 
-                if colx > paddlex:
+                    print('C')
+                    input.left = True
+            else: 
+                if ballx > self.prev_ballx:
+                    print('D')
                     input.right = True
                 else:
-                    input.left = True
+                    if self.prev_ballx < colx:
+                        print('E')
+                        input.left = True
+                    else:
+                        print('F')
+                        input.right = True
+
+            self.prev_ballx = ballx
+            self.prev_bally = bally
 
             return input
 
 
 if __name__ == '__main__':
+    import argparse
     import sys
-    framedir = sys.argv[1]
-    agentclass = sys.argv[2]
+    
+    parser = argparse.ArgumentParser(description='Run an agent on a Toybox game.')
+    parser.add_argument('output', help='The directory in which to save output (frames and json)')
+    parser.add_argument('agentclass', help='The name of the Agent class')
+    parser.add_argument('--maxsteps', default=1e7, help='The maximum number of steps to run.')
+
+    args = parser.parse_args()
+
     with Toybox('breakout') as tb:
-        agent = eval(agentclass)(tb)
+        agent = eval(args.agentclass)(tb)
         # Need to get the ball
         input = Input()
         input.button1 = True
         agent.toybox.apply_action(input)
         # Now play the game
-        agent.play(framedir, maxsteps=500)
+        agent.play(args.output, args.maxsteps)
     
