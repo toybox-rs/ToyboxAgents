@@ -106,14 +106,14 @@ class Target(StayAliveJitter):
             paddley = game.paddle.position.y
             paddle_width = game.paddle_width
 
-            y_is_close = abs(bally - paddley) < 1.5 * paddle_width
-            x_is_close = abs(ballx - paddlex) < 1.5 * paddle_width
-            ball_down = self.prev_bally > bally if self.prev_bally else True
+            y_is_close = abs(bally - paddley) < paddle_width
+            x_is_close = abs(ballx - paddlex) < paddle_width
+            ball_down = self.prev_bally < bally if self.prev_bally else True
 
-            if not y_is_close or not x_is_close or not ball_down:
+            if not (y_is_close and x_is_close and ball_down):
                 return super().get_action(intervention=intervention)
 
-            print('TARGET')
+            print('TARGET', self.frame_counter)
             # TARGETING TIME
             # get the column with the fewest bricks greater than zero
             # if there is one brick, stop early
