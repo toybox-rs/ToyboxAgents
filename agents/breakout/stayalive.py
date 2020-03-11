@@ -95,9 +95,9 @@ class Target(StayAliveJitter):
         with breakout.BreakoutIntervention(self.toybox) as intervention:
             game = intervention.game
 
-            if len(game.balls) == 0:
-                # We missed in the previous round; game over.
-                return   
+            # We missed in the previous round; game over.
+            if len(game.balls) == 0: return   
+
             ball = game.balls[0]
             ballx = ball.position.x
             bally = ball.position.y
@@ -106,22 +106,14 @@ class Target(StayAliveJitter):
             paddley = game.paddle.position.y
             paddle_width = game.paddle_width
 
-            #dx = paddle_width // 4
-
             y_is_close = abs(bally - paddley) < 1.5 * paddle_width
             x_is_close = abs(ballx - paddlex) < 1.5 * paddle_width
+            ball_down = self.prev_bally > bally if self.prev_bally else True
 
-            # If the ball isn't close, don't do anything
-            if not (x_is_close or y_is_close): 
-                self.prev_ballx = ballx
-                self.prev_bally = bally
-                return input
-
-            if intervention.num_bricks_remaining() == intervention.num_bricks():
-                # if we haven't hit anything yet and the ball isn't close, default to StayAliveJitter
+            if not y_is_close or not x_is_close or not ball_down:
                 return super().get_action(intervention=intervention)
 
-
+            print('TARGET')
             # TARGETING TIME
             # get the column with the fewest bricks greater than zero
             # if there is one brick, stop early
@@ -129,35 +121,56 @@ class Target(StayAliveJitter):
             # Start by shuffling the columns
             columns = [intervention.get_column(i) for i in range(intervention.num_columns())]
             shuffle(columns)
-            num_alive = [len([int(brick.alive) for brick in this_col]) for this_col in columns]
+
             # Get list of potential targets -- i.e., columns that are not yet completed.
+            num_alive = [len([int(brick.alive) for brick in this_col]) for this_col in columns]
             targets = sorted([t for t in zip(num_alive, columns) if t[0] > 0], key=lambda t: t[0])
+
             # Target the column closest to completion
             colx = targets[0][1][0].position.x
 
-            print(self.frame_counter)
-            if ballx < paddlex:
-                if ballx < self.prev_ballx:
-                    if self.prev_ballx < colx:
-                        print('A')
+            # Predict number of time steps until the ball crosses the x axis
+            # We should be heading down from here (otherwise we would have triggered the super method)
+            # We know that the ball bounces off the wall, but we are not modeling that for now.
+            px_per_frame = abs(self.prev_ballx - ballx)
+            steps_until_x_cross = bally // px_per_frame
+            ball_move_right = self.prev_ballx < ballx
+            projected_x_cross = ballx + (steps_until_x_cross * px_per_frame * (-1 if ball_move_right else 1))
+            dx = 3
+            # If the ball crosses the x-axis near the target column, just try to align the paddle like normal
+            if abs(colx - projected_x_cross) <= dx:
+                return super().get_action(intervention=intervention)
+            # The target column is to the left
+            elif colx < projected_x_cross:
+                if steps_until_x_cross < dx:
+                    if paddlex == projected_x_cross:
+                        if random() > self.jitter:
+                            input.right = True
+                    # If the paddle is to the left, move to the right
+                    elif paddlex < projected_x_cross:
                         input.right = True
+                    # Then the paddle is to the right
                     else:
-                        print('B')
+                        # Make sure the paddle isn't too far to the right
+                        if paddlex - (0.5 * paddle_width) > projected_x_cross:
+                            input.left =  True
+                        elif random() > self.jitter:
+                            input.left = True
+            # The target column is to the right of the projected cross
+            else:
+                if paddlex == projected_x_cross:
+                    if random() > self.jitter:
                         input.left = True
-                else: 
-                    print('C')
-                    input.left = True
-            else: 
-                if ballx > self.prev_ballx:
-                    print('D')
-                    input.right = True
+                # If the center of the paddle is to the left of the projected cross
+                elif paddlex < projected_x_cross:
+                    if paddlex + (0.5 * paddle_width) < projected_x_cross:
+                        input.right = True
+                    elif random() > self.jitter:
+                        input.right = True
+                # Paddle is too far to the right
                 else:
-                    if self.prev_ballx < colx:
-                        print('E')
-                        input.left = True
-                    else:
-                        print('F')
-                        input.right = True
+                    input.left = True
+
 
             self.prev_ballx = ballx
             self.prev_bally = bally
@@ -172,7 +185,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run an agent on a Toybox game.')
     parser.add_argument('output', help='The directory in which to save output (frames and json)')
     parser.add_argument('agentclass', help='The name of the Agent class')
-    parser.add_argument('--maxsteps', default=1e7, help='The maximum number of steps to run.')
+    parser.add_argument('--maxsteps', default=1e7, type=int, help='The maximum number of steps to run.')
 
     args = parser.parse_args()
 
@@ -184,4 +197,3 @@ if __name__ == '__main__':
         agent.toybox.apply_action(input)
         # Now play the game
         agent.play(args.output, args.maxsteps)
-    
