@@ -111,6 +111,7 @@ class Target(StayAliveJitter):
             ball_down = self.prev_bally < bally if self.prev_bally else True
 
             if not (y_is_close and x_is_close and ball_down):
+                self.prev_bally = bally
                 return super().get_action(intervention=intervention)
 
             print('TARGET', self.frame_counter)
@@ -120,55 +121,75 @@ class Target(StayAliveJitter):
 
             # Start by shuffling the columns
             columns = [intervention.get_column(i) for i in range(intervention.num_columns())]
-            shuffle(columns)
+            #shuffle(columns)
 
             # Get list of potential targets -- i.e., columns that are not yet completed.
             num_alive = [len([int(brick.alive) for brick in this_col]) for this_col in columns]
             targets = sorted([t for t in zip(num_alive, columns) if t[0] > 0], key=lambda t: t[0])
 
             # Target the column closest to completion
-            colx = targets[0][1][0].position.x
+            target_brick = targets[0][1][0]
+            colx = target_brick.position.x
+            print('Targeting column %d\n\tprev_ballx: %d\tballx: %d\tbally: %d\tpaddlex: %d\tcolx: %d' % (
+                target_brick.col,
+                self.prev_ballx,
+                ballx, bally,
+                paddlex,
+                colx))
+            
 
             # Predict number of time steps until the ball crosses the x axis
             # We should be heading down from here (otherwise we would have triggered the super method)
             # We know that the ball bounces off the wall, but we are not modeling that for now.
-            px_per_frame = abs(self.prev_ballx - ballx)
-            steps_until_x_cross = bally // px_per_frame
+            px_per_frame = (abs(self.prev_ballx - ballx) + abs(self.prev_bally - bally)) / 2.
+            print('\tPixels per frame', px_per_frame)
+            steps_until_x_cross = (paddley - bally) / px_per_frame
+            print('\tEstimated number of steps until x crosses the axis', steps_until_x_cross)
             ball_move_right = self.prev_ballx < ballx
-            projected_x_cross = ballx + (steps_until_x_cross * px_per_frame * (-1 if ball_move_right else 1))
+            projected_x_cross = ballx + (steps_until_x_cross * px_per_frame * (1 if ball_move_right else -1))
             dx = 3
+            print('\tProjected x cross', projected_x_cross)
             # If the ball crosses the x-axis near the target column, just try to align the paddle like normal
             if abs(colx - projected_x_cross) <= dx:
+                print('\tCALLING SUPER')
                 return super().get_action(intervention=intervention)
             # The target column is to the left
             elif colx < projected_x_cross:
                 if steps_until_x_cross < dx:
                     if paddlex == projected_x_cross:
                         if random() > self.jitter:
+                            print('Column to left; paddle at cross; Random move right')
                             input.right = True
                     # If the paddle is to the left, move to the right
                     elif paddlex < projected_x_cross:
+                        print('Column to left; paddle to left; Move right')
                         input.right = True
                     # Then the paddle is to the right
                     else:
                         # Make sure the paddle isn't too far to the right
                         if paddlex - (0.5 * paddle_width) > projected_x_cross:
+                            print('Column to left; paddle too far right; Move left')
                             input.left =  True
                         elif random() > self.jitter:
+                            print('Column to left; paddle to right; Random move left.')
                             input.left = True
             # The target column is to the right of the projected cross
             else:
                 if paddlex == projected_x_cross:
                     if random() > self.jitter:
+                        print('Column to right; paddle under; random move left.')
                         input.left = True
                 # If the center of the paddle is to the left of the projected cross
                 elif paddlex < projected_x_cross:
                     if paddlex + (0.5 * paddle_width) < projected_x_cross:
+                        print('Column to right; paddle too far left; move right')
                         input.right = True
                     elif random() > self.jitter:
+                        print('Column to right; random move right')
                         input.right = True
                 # Paddle is too far to the right
                 else:
+                    print('Column to right; Paddle too far right; move left.')
                     input.left = True
 
 
