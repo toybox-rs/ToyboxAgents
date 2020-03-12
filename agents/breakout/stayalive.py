@@ -4,6 +4,7 @@ from ctoybox import Toybox, Input
 from random import random
 from numpy.random import shuffle
 
+
 class StayAlive(Agent):
     """The simplest agent. Reacts deterministically to the x position of the ball."""
 
@@ -107,8 +108,8 @@ class Target(StayAliveJitter):
             paddley = game.paddle.position.y
             paddle_width = game.paddle_width
 
-            y_is_close = abs(bally - paddley) < paddle_width
-            x_is_close = abs(ballx - paddlex) < paddle_width
+            y_is_close = abs(bally - paddley) < 1.5 * paddle_width
+            x_is_close = abs(ballx - paddlex) < 1.5 * paddle_width
             ball_down = self.prev_bally < bally if self.prev_bally else True
 
             if not (y_is_close and x_is_close and ball_down):
@@ -206,12 +207,13 @@ class Target(StayAliveJitter):
 
 if __name__ == '__main__':
     import argparse
-    import sys
+    import sys, os
     
     parser = argparse.ArgumentParser(description='Run an agent on a Toybox game.')
     parser.add_argument('output', help='The directory in which to save output (frames and json)')
     parser.add_argument('agentclass', help='The name of the Agent class')
     parser.add_argument('--maxsteps', default=1e7, type=int, help='The maximum number of steps to run.')
+    parser.add_argument('--trials', default=30, type=int, help='The number of games this agent should play (with one life)')
 
     args = parser.parse_args()
 
@@ -221,5 +223,11 @@ if __name__ == '__main__':
         input = Input()
         input.button1 = True
         agent.toybox.apply_action(input)
+        # Run with only one life
+        with breakout.BreakoutIntervention(tb) as intervention:
+            intervention.game.lives = 1
         # Now play the game
-        agent.play(args.output, args.maxsteps)
+        for trial in range(args.trials):
+            path = args.output + os.sep + str(trial)
+            os.makedirs(path)
+            agent.play(path, args.maxsteps)
