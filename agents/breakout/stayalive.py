@@ -229,5 +229,6 @@ if __name__ == '__main__':
         # Now play the game
         for trial in range(args.trials):
             path = args.output + os.sep + str(trial)
-            os.makedirs(path)
+            if not os.path.isdir(path):
+                os.makedirs(path)
             agent.play(path, args.maxsteps)

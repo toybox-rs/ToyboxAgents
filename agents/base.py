@@ -50,7 +50,8 @@ class Agent(ABC):
                 self.toybox.apply_action(action)
                 self.save_data(path)
                 self.actions.append(action)
-            else: 
-                with open(path + os.sep + self.name + '.act', 'w') as f:
-                    for action in self.actions:
-                        f.write(action_to_string(action)+'\n')
+            else: break
+
+        with open(path + os.sep + self.name + '.act', 'w') as f:
+            for action in self.actions:
+                f.write(action_to_string(action)+'\n')

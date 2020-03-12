@@ -14,6 +14,7 @@ for agent in ['StayAlive', 'SmarterStayAlive', 'StayAliveJitter', 'Target']:
 
 source .env/bin/activate
 pip install -r REQUIREMENTS.txt
+echo "{0}"
 python -m agents.breakout.stayalive output/{0} {0}
 """.format(agent)
         f.write(content)
