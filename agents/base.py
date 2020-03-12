@@ -2,6 +2,21 @@ from abc import ABC, abstractmethod
 from ctoybox import Toybox, Input
 import os
 
+def action_to_string(action: Input):
+    if action.left:
+        return 'left'
+    elif action.right:
+        return 'right'
+    elif action.up:
+        return 'up'
+    elif action.down:
+        return 'down'
+    elif action.button1:
+        return 'button1'
+    elif action.button2:
+        return 'button2'
+    else: assert False
+
 
 class Agent(ABC):
 
@@ -9,6 +24,7 @@ class Agent(ABC):
         self.toybox = toybox
         self.name = self.__class__.__name__
         self.frame_counter = 0
+        self.actions = []
 
     def _next_file(self, path):
         self.frame_counter += 1
@@ -33,4 +49,8 @@ class Agent(ABC):
             if action:
                 self.toybox.apply_action(action)
                 self.save_data(path)
-            else: return 
+                self.actions.append(action)
+            else: 
+                with open(path + os.sep + self.name + '.act', 'w') as f:
+                    for action in self.actions:
+                        f.write(action_to_string(action)+'\n')

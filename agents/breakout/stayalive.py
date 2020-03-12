@@ -86,6 +86,7 @@ class Target(StayAliveJitter):
 
     def __init__(self, toybox:Toybox):
         self.prev_bally = None
+        self.score = 0
         super().__init__(toybox)
 
     def get_action(self):
@@ -124,8 +125,12 @@ class Target(StayAliveJitter):
             #shuffle(columns)
 
             # Get list of potential targets -- i.e., columns that are not yet completed.
-            num_alive = [len([int(brick.alive) for brick in this_col]) for this_col in columns]
+            num_alive = [sum([int(brick.alive) for brick in this_col]) for this_col in columns]
             targets = sorted([t for t in zip(num_alive, columns) if t[0] > 0], key=lambda t: t[0])
+            if game.score > self.score:
+                self.score = game.score
+                for n, c in targets:
+                    print('%d bricks in column %d' % (n, c[0].col))
 
             # Target the column closest to completion
             target_brick = targets[0][1][0]
@@ -147,11 +152,10 @@ class Target(StayAliveJitter):
             print('\tEstimated number of steps until x crosses the axis', steps_until_x_cross)
             ball_move_right = self.prev_ballx < ballx
             projected_x_cross = ballx + (steps_until_x_cross * px_per_frame * (1 if ball_move_right else -1))
-            dx = 3
+            dx = 4
             print('\tProjected x cross', projected_x_cross)
             # If the ball crosses the x-axis near the target column, just try to align the paddle like normal
             if abs(colx - projected_x_cross) <= dx:
-                print('\tCALLING SUPER')
                 return super().get_action(intervention=intervention)
             # The target column is to the left
             elif colx < projected_x_cross:
@@ -173,6 +177,7 @@ class Target(StayAliveJitter):
                         elif random() > self.jitter:
                             print('Column to left; paddle to right; Random move left.')
                             input.left = True
+                else: return super().get_action(intervention=intervention)
             # The target column is to the right of the projected cross
             else:
                 if paddlex == projected_x_cross:
