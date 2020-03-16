@@ -1,8 +1,7 @@
 from agents.base import Agent
 import toybox.interventions.breakout as breakout
 from ctoybox import Toybox, Input
-from random import random
-from numpy.random import shuffle
+from random import random, seed, randint
 
 
 class StayAlive(Agent):
@@ -123,7 +122,6 @@ class Target(StayAliveJitter):
 
             # Start by shuffling the columns
             columns = [intervention.get_column(i) for i in range(intervention.num_columns())]
-            #shuffle(columns)
 
             # Get list of potential targets -- i.e., columns that are not yet completed.
             num_alive = [sum([int(brick.alive) for brick in this_col]) for this_col in columns]
@@ -214,6 +212,7 @@ if __name__ == '__main__':
     parser.add_argument('agentclass', help='The name of the Agent class')
     parser.add_argument('--maxsteps', default=1e7, type=int, help='The maximum number of steps to run.')
     parser.add_argument('--trials', default=30, type=int, help='The number of games this agent should play (with one life)')
+    parser.add_argument('--seed', default=0, type=int)
 
     args = parser.parse_args()
 
@@ -224,10 +223,14 @@ if __name__ == '__main__':
         input.button1 = True
         agent.toybox.apply_action(input)
         # Run with only one life
+
         with breakout.BreakoutIntervention(tb) as intervention:
-            intervention.game.lives = 1
-        # Now play the game
-        for trial in range(args.trials):
-            path = args.output + os.sep + str(trial)
-            os.makedirs(path)
-            agent.play(path, args.maxsteps)
+            intervention.game.lives = 1    
+            print('seed', intervention.game.rand['state'])
+            if args.seed:
+                #tb.set_seed(args.seed)
+                seed(args.seed)
+                intervention.game.rand['state'] = [randint(0, 1e19), randint(0, 1e19)]
+                tb.new_game()
+        
+        agent.play(args.output, args.maxsteps)

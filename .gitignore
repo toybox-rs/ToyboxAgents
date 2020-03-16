@@ -3,4 +3,5 @@
 Toybox
 frames
 __pycache__
-*.mp4
+*.mp4output
+*.pyc
