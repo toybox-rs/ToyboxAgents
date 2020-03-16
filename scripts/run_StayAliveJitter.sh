@@ -8,4 +8,5 @@
 
 source .env/bin/activate
 pip install -r REQUIREMENTS.txt
+echo "StayAliveJitter"
 python -m agents.breakout.stayalive output/StayAliveJitter StayAliveJitter

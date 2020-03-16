@@ -8,4 +8,5 @@
 
 source .env/bin/activate
 pip install -r REQUIREMENTS.txt
+echo "SmarterStayAlive"
 python -m agents.breakout.stayalive output/SmarterStayAlive SmarterStayAlive

@@ -8,4 +8,5 @@
 
 source .env/bin/activate
 pip install -r REQUIREMENTS.txt
+echo "Target"
 python -m agents.breakout.stayalive output/Target Target
