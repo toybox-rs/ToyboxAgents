@@ -2,6 +2,9 @@
 
 import os 
 import random
+import sys
+
+root = sys.argv[1] if len(sys.argv) > 1 else '.'
 
 for agent in ['StayAlive', 'SmarterStayAlive', 'StayAliveJitter', 'Target']:
     # run for 30 trials each
@@ -19,7 +22,7 @@ for agent in ['StayAlive', 'SmarterStayAlive', 'StayAliveJitter', 'Target']:
 
     source .env/bin/activate
     pip install -r REQUIREMENTS.txt
-    mkdir -p output/{0}/{1}
-    python -m agents.breakout.stayalive output/{0} {0}
-    """.format(agent, seed)
+    mkdir -p {2}/output/{0}/{1}
+    python -m agents.breakout.stayalive {2}/output/{0} {0}
+    """.format(agent, seed, root)
             f.write(content)
