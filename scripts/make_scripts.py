@@ -14,7 +14,7 @@ for agent in ['StayAlive', 'SmarterStayAlive', 'StayAliveJitter', 'Target']:
         with open('scripts/run_%s.sh' % agent, 'w') as f:
             content = """#!/bin/bash
 #
-#SBATCH —job-name={0}
+#SBATCH —job-name={0}_{2}
 #SBATCH --output=logs/{0}_{2}.out
 #SBATCH -e logs/{0}_{2}.err 
 #SBATCH --nodes=1 
