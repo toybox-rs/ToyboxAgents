@@ -8,4 +8,4 @@ ToyboxAgents depends on both the core [Toybox package](https://github.com/toybox
 
 ## Generating data
 
-Once you load up your virtual environment, you can see usage, e.g., via `python -m agents.breakout.stayalive`.
+Once you load up your virtual environment, you can see usage, e.g., via `python -m agents`, executed from the top-level directory. 
