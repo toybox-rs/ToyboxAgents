@@ -11,7 +11,7 @@ for agent in ['StayAlive', 'SmarterStayAlive', 'StayAliveJitter', 'Target']:
     for _ in range(30):
         seed = random.randint(0, 1e7)
 
-        with open('scripts/run_%s.sh' % agent, 'w') as f:
+        with open('scripts/run_%s_%d.sh' % (agent, seed), 'w') as f:
             content = """#!/bin/bash
 #
 #SBATCH —job-name={0}_{2}

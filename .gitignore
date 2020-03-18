@@ -5,3 +5,7 @@ frames
 __pycache__
 *.mp4output
 *.pyc
+run_*
+*.mp4
+*.out
+output
