@@ -45,4 +45,8 @@ with Toybox(game_lower) as tb:
 
     agent_str = 'agents.' + game_lower + '.' + args.agentclass.lower() + '.' + args.agentclass
     agent = eval(agent_str)(tb)
+
+    if args.seed:
+        agent.reset_seed(args.seed)
+
     agent.play(path, args.maxsteps)

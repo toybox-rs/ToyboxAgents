@@ -1,5 +1,6 @@
 from . import *
 from .stayalivejitter import StayAliveJitter
+from random import random, seed, randint
 
 
 class Target(StayAliveJitter):
@@ -7,6 +8,7 @@ class Target(StayAliveJitter):
     def __init__(self, toybox:Toybox):
         self.prev_bally = None
         self.score = 0
+        seed(self.seed)
         super().__init__(toybox)
 
     def get_action(self):

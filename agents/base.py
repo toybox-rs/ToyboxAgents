@@ -26,6 +26,10 @@ class Agent(ABC):
         self.name = self.__class__.__name__
         self.frame_counter = 0
         self.actions = []
+        self.seed = 1234
+
+    def reset_seed(self, seed):
+        self.seed = seed
 
     def _next_file(self, path):
         self.frame_counter += 1
