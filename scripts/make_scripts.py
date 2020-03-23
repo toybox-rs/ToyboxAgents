@@ -23,6 +23,8 @@ for agent in ['StayAlive', 'SmarterStayAlive', 'StayAliveJitter', 'Target']:
 source .env/bin/activate
 pip install -r REQUIREMENTS.txt
 mkdir -p {2}/output/{0}/{1}
+# We may be -re-running this script; if so, delete old data
+rm {2}/output/{1}/{1}/*
 mkdir -p logs
 echo "Running {0} with seed {1}..."
 python -m agents --game Breakout --output {2}/output/{0} --agentclass {0} --seed {1}
