@@ -9,12 +9,11 @@ import toybox
 #from agents import breakout
 
 parser = argparse.ArgumentParser(description='Run an agent on a Toybox game.')
-parser.add_argument('--output', help='The directory in which to save output (frames and json)')
-parser.add_argument('--agentclass', help='The name of the Agent class')
-parser.add_argument('--game', help='The name of the game. Must Be CamelCase.')
-parser.add_argument('--maxsteps', default=1e7, type=int, help='The maximum number of steps to run.')
-#parser.add_argument('--trials', default=30, type=int, help='The number of games this agent should play (with one life)')
-parser.add_argument('--seed', default=0, type=int)
+parser.add_argument('--output',     default='.',                               help='The directory in which to save output (frames and json)')
+parser.add_argument('--agentclass',                             required=True, help='The name of the Agent class')
+parser.add_argument('--game',                                   required=True, help='The name of the game. Must Be CamelCase.')
+parser.add_argument('--maxsteps',   default=1e7,      type=int,                help='The maximum number of steps to run.')
+parser.add_argument('--seed',                         type=int)
 args = parser.parse_args()
 
 game_lower = args.game.lower()
@@ -36,7 +35,7 @@ with Toybox(game_lower) as tb:
     with eval(intervention_str)(tb) as intervention:
         intervention.game.lives = 1    
 
-    path = args.output + os.sep + str(args.seed)
+    path = args.output + (os.sep + str(args.seed) if args.seed else '')
 
     # Need to get the ball (i.e., start the game)
     input = Input()

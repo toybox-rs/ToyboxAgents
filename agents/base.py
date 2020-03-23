@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from ctoybox import Toybox, Input
 import os
+import ujson 
 
 def action_to_string(action: Input):
     if action.left:
@@ -36,7 +37,7 @@ class Agent(ABC):
         json = f + '.json'
         self.toybox.save_frame_image(img)
         with open(json, 'w') as ff:
-            ff.write(str(self.toybox.state_to_json()))
+            ujson.dump(self.toybox.state_to_json(), ff)
 
     @abstractmethod
     def get_action(self) -> Input: pass
@@ -51,6 +52,8 @@ class Agent(ABC):
                 self.save_data(path)
                 self.actions.append(action)
             else: break
+
+        assert len(self.actions) == self.frame_counter - 1 
 
         with open(path + os.sep + self.name + '.act', 'w') as f:
             for action in self.actions:
