@@ -7,8 +7,8 @@ class StayAliveJitter(Agent):
     def __init__(self, toybox: Toybox):
         self.jitter = 0.3
         self.prev_ballx = None
-        seed(self.seed)
         super().__init__(toybox)
+        seed(self.seed)
 
     def get_action(self, intervention=None):
         input = Input()

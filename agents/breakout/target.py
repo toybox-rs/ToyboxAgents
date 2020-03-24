@@ -8,8 +8,8 @@ class Target(StayAliveJitter):
     def __init__(self, toybox:Toybox):
         self.prev_bally = None
         self.score = 0
-        seed(self.seed)
         super().__init__(toybox)
+        seed(self.seed)
 
     def get_action(self):
         input = Input()
