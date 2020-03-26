@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from ctoybox import Toybox, Input
 import os
 import ujson 
+import random
 
 def action_to_string(action: Input):
     if action.left:
@@ -30,6 +31,8 @@ class Agent(ABC):
 
     def reset_seed(self, seed):
         self.seed = seed
+        random.seed(seed)
+
 
     def _next_file(self, path):
         self.frame_counter += 1

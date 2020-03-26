@@ -33,7 +33,7 @@ with Toybox(game_lower) as tb:
         args.game
     )
     with eval(intervention_str)(tb) as intervention:
-        intervention.game.lives = 1    
+        intervention.game.lives = 0    
 
     path = args.output + (os.sep + str(args.seed) if args.seed else '')
 

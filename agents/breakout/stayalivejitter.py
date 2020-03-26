@@ -27,6 +27,11 @@ class StayAliveJitter(Agent):
                 input.left = True
             elif ballx > paddlex and ballx > self.prev_ballx and random() > self.jitter:
                 input.right = True
+            elif random() < self.jitter:
+                if random() < 0.5:
+                    input.left = True
+                else:
+                    input.right = True
 
             self.prev_ballx = ballx
             
