@@ -10,7 +10,7 @@ root = sys.argv[1] if len(sys.argv) > 1 else '.'
 for agent in ['StayAlive', 'SmarterStayAlive', 'StayAliveJitter', 'Target']:
     # create empty tar file that we will add to in a distributed fashion
     tarfile = root + os.sep + agent + '.tar'
-    echo "Creating empty tar: %s" % tarfile
+    print("Creating empty tar: %s" % tarfile)
     subprocess.run(['tar', '-cf', tarfile, '-T', '/dev/null'])
     # run for 30 trials each
     for _ in range(30):
