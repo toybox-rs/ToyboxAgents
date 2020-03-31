@@ -1,0 +1,5 @@
+jupyter
+imageio
+imageio_ffmpeg
+tqdm
+pandas
