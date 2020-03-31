@@ -9,3 +9,8 @@ run_*
 *.mp4
 *.out
 output
+.DS_Store
+.mypy_cache
+*~
+*.pynb_checkpoints
+analysis/.ipynb_checkpoints/

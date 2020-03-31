@@ -211,6 +211,7 @@ outcome2 = missed
 # %% [HTML]
 # <video width="45%" controls>
 #   <source src="videos/Target.mp4" type="video/mp4" />
+#   <source src="https://raw.githubusercontent.com/KDL-umass/ToyboxAgents/master/analysis/videos/StayAliveJitter.mp4" type="video/mp4" />
 # </video>
 # <video width="45%" controls>
 #   <source src="videos/StayAliveJitter.mp4" type="video/mp4" />
@@ -279,8 +280,8 @@ from collections import namedtuple
 import numpy as np
 import math
 
-# Grab the first 10 as an example
-bstates = [breakout.Breakout.decode(None, s[1], breakout.Breakout) for s in states[:10]]
+# Grab the first 10, some middle 10, and the last 10 as an example
+bstates = [breakout.Breakout.decode(None, s[1], breakout.Breakout) for s in states[:10] + states[200:210] + states[-10:]]
 
 # We are going to want to use some helper functions from the interventions API.
 # To avoid cleaning up TB and having too many indentations, let's provide a dummy TB instance.
@@ -328,7 +329,8 @@ with open('dat.csv', 'w') as f:
         'l2_ball_pad',
         'num_bricks_left'])
 
-    for t, state in enumerate(bstates):
+    timestamps = list(range(10)) + list(range(200, 210)) + list(range(len(states)-10, len(states)))
+    for t, state in zip(timestamps, bstates):
         query.game = state
         if t == 0:
             initial_paddle_width = state.paddle_width
@@ -336,7 +338,8 @@ with open('dat.csv', 'w') as f:
 
         # Record the action at time t
         # action
-        record.append(bactions[t])
+        action = bactions[t].decode('utf-8').strip() if t < len(actions) - 1 else None
+        record.append('noop' if action == 'button1' else action)
 
         # Record whether the agent missed the ball
         missed_ball = len(state.balls) == 0
@@ -345,7 +348,8 @@ with open('dat.csv', 'w') as f:
         
         # Record the x and y coordinates of the ball and paddle at t and t-1
         # Store intermediate values that we use later.
-        ball_pos = state.balls[0].position
+        ball = state.balls[0] if not missed_ball else None
+        ball_pos = ball.position if ball else None
         paddle_pos = state.paddle.position
 
         # xpos_ball
@@ -385,10 +389,10 @@ with open('dat.csv', 'w') as f:
         record.append('big' if state.paddle_width == initial_paddle_width else 'small')
 
         # Ball speed can have one of two values
-        record.append(None if missed_ball else \
-            'slow' if math.isclose(state.balls[0].position.y, 
-                                   config['ball_speed_slow'], 
-                                   rel_tol=0.1) \
+        bvelocity = state.balls[0].velocity if ball else None
+        speed = math.sqrt(bvelocity.x**2 + bvelocity.y**2) if bvelocity else None
+        record.append(None if not speed \
+            else 'slow' if math.isclose(speed, config['ball_speed_slow'], rel_tol=0.01) \
             else 'fast')
 
         # Record whether the ball is travelling downward
@@ -396,9 +400,9 @@ with open('dat.csv', 'w') as f:
         record.append(None if missed_ball else state.balls[0].velocity.y > 0)
 
         # Different types of distances between balls and paddles
-        record.append(abs(ball_pos.x - paddle_pos.x))
-        record.append(abs(ball_pos.y - paddle_pos.y))
-        record.append(math.sqrt((ball_pos.x - paddle_pos.x)**2 + (ball_pos.y - paddle_pos.y)**2))
+        record.append(abs(ball_pos.x - paddle_pos.x) if ball_pos else None)
+        record.append(abs(ball_pos.y - paddle_pos.y) if ball_pos else None)
+        record.append(math.sqrt((ball_pos.x - paddle_pos.x)**2 + (ball_pos.y - paddle_pos.y)**2) if ball_pos else None)
 
         # Total bricks left
         record.append(sum(int(b.alive) for b in state.bricks))
