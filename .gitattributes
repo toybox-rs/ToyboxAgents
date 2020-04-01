@@ -1,0 +1,2 @@
+analysis/videos filter=lfs diff=lfs merge=lfs -text
+analysis/data filter=lfs diff=lfs merge=lfs -text
