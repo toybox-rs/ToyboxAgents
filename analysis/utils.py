@@ -1,7 +1,10 @@
 import os
 import tarfile
 import imageio
-import ujson
+try:
+    import ujson
+except:
+    import json as ujson
 from collections import defaultdict
 from tqdm import tqdm
 

@@ -1,7 +1,12 @@
 from abc import ABC, abstractmethod
 from ctoybox import Toybox, Input
 import os
-import ujson 
+
+try:
+    import ujson 
+except: 
+    import json as ujson
+
 import random
 
 def action_to_string(action: Input):
