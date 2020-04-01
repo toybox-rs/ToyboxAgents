@@ -6,11 +6,15 @@ ToyboxAgents depends on both the core [Toybox package](https://github.com/toybox
 
 `pip -r REQUIREMENTS.txt`
 
-You will also want to try to install `ujson`:
+We recommend you to try to install `ujson`:
 
 `pip install ujson`
 
-We have observed installation issues on OSX Catalina. If you cannot install the `ujson` library, the code will default back to the existing `json` library.
+We have observed installation issues on OSX Catalina; if you get a linker error for `ujson` library, you can try running with the `CFLAGS` argument:
+
+`CFLAGS=-stdlib=libc++ pip install ujson`
+ 
+If this does not work, the code will simply default back to the existing `json` library.
 
 ## Generating data
 

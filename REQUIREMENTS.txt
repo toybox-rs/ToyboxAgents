@@ -1,3 +1,2 @@
 ctoybox
 git+git://github.com/toybox-rs/Toybox.git@setup#egg=toybox
-ujson
