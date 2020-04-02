@@ -33,11 +33,11 @@
 # %%
 from utils import load_data
 
-agent1 = load_data('data/agent1.tgz', load_state=True)
+agent1 = load_data('data/raw/Target.zip', load_state=True)
+agent2 = load_data('data/raw/agent2.tgz', load_state=True) 
 # Warning: loading all four agents takes time! 
-# agent2 = load_data('data/agent2.tgz', 'breakout' load_state=True) 
-# agent3 = load_data('data/agent3.tgz', 'breakout' load_state=True) 
-# agent4 = load_data('data/agent4.tgz', 'breakout' load_state=True) 
+# agent3 = load_data('data/agent3.tgz', load_state=True) 
+# agent4 = load_data('data/agent4.tgz', load_state=True) 
 
 # %% [markdown]
 # You only need to load the data up once. Cells in notebooks are stateful and they can be run out of order (although in this tutorial, we have written it to be run in order). For interactive data analysis, we'd like to only load the data into memory once. 
@@ -48,7 +48,7 @@ agent1 = load_data('data/agent1.tgz', load_state=True)
 
 # %%
 from utils import make_videos
-agent1_videos = load_data('data/agent1.tgz', load_images=True)
+agent1_videos = load_data('data/raw/Target.zip', load_images=True)
 make_videos(agent1_videos['images'])
 del agent1_videos
 
