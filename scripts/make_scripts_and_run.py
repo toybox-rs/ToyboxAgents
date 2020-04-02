@@ -5,10 +5,15 @@ import random
 import sys
 import subprocess
 import zipfile
+import argparse
+import time
 
-root = sys.argv[1] if len(sys.argv) > 1 else '.'
+parser = argparse.ArgumentParser()
+parser.add_argument('root', help='You probably want your work1 location on swarm and \'.\' on your local machine.')
+args = parser.parse_args()
+root = args.root
+
 agents =  ['StayAlive', 'SmarterStayAlive', 'StayAliveJitter', 'Target']
-agents = agents[:-1]
 
 for agent in agents:
     # create empty tar file that we will add to in a distributed fashion
@@ -27,20 +32,22 @@ for agent in agents:
             content = """#!/bin/bash
 #
 #SBATCH —job-name={0}_{1}
-#SBATCH --output=logs/{0}_{2}.out
-#SBATCH -e logs/{0}_{2}.err 
+#SBATCH --output=logs/{0}_{1}.out
+#SBATCH -e logs/{0}_{1}.err 
 #SBATCH --nodes=1 
 #SBATCH --ntasks=1 
 #SBATCH --mem=2048
+#SBATCH --time=04:00
 source .env/bin/activate
 pip install -r REQUIREMENTS.txt
-mkdir -p {2}/output/{0}/{1}
+mkdir -p {2}/{0}/{1}
 # We may be -re-running this script; if so, delete old data
-rm {2}/output/{0}/{1}/*
+rm {2}/{0}/{1}/*
 mkdir -p logs
-python -m agents --game Breakout --output {2}/output/{0} --agentclass {0} --seed {1}
-zip --ur --file={3} {2}/output/{0}/{1}/*
+python -m agents --game Breakout --output {2}/{0} --agentclass {0} --seed {1}
+zip -ur --file={3} {2}/{0}/*
 """.format(agent, seed, root, tarfile)
             f.write(content)
 
         subprocess.run(['sbatch', cmdfile])
+        time.sleep(2)
