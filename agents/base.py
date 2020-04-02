@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from ctoybox import Toybox, Input
-import os
+import os, signal
 
 try:
     import ujson 
@@ -51,10 +51,25 @@ class Agent(ABC):
         with open(json, 'w') as ff:
             ujson.dump(self.toybox.state_to_json(), ff)
 
+    def save_actions(self, path):
+        with open(path + os.sep + self.name + '.act', 'w') as f:
+            for action in self.actions:
+                f.write(action_to_string(action)+'\n')
+
+    def kill_and_record(self, path):
+        def inner(sig, frame):
+            self.save_actions(path)
+            exit(0)
+        return inner
+
     @abstractmethod
     def get_action(self) -> Input: pass
 
     def play(self, path, maxsteps):
+        # set the signal handler to save actions when we are interrupted.
+        signal.signal(signal.SIGINT, self.kill_and_record(path))
+        signal.signal(signal.SIGTERM, self.kill_and_record(path))
+        #signal.signal(signal.SIGKILL, self.kill_and_record(path))
         self.save_data(path)
 
         while not self.toybox.game_over() and self.frame_counter < maxsteps:
@@ -66,7 +81,4 @@ class Agent(ABC):
             else: break
 
         assert len(self.actions) == self.frame_counter - 1 
-
-        with open(path + os.sep + self.name + '.act', 'w') as f:
-            for action in self.actions:
-                f.write(action_to_string(action)+'\n')
+        self.save_actions(path)

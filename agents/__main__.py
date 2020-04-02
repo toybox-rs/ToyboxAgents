@@ -32,8 +32,13 @@ with Toybox(game_lower) as tb:
         game_lower,
         args.game
     )
-    with eval(intervention_str)(tb) as intervention:
-        intervention.game.lives = 0    
+    try:
+        with eval(intervention_str)(tb) as intervention:
+            intervention.game.lives = 0    
+    except AttributeError as e:
+        print(e)
+        print('You either forget to write write "{0}" in CamelCase or the game {0} is not supported.'.format(args.game))
+        exit(1)        
 
     path = args.output + (os.sep + str(args.seed) if args.seed else '')
 
