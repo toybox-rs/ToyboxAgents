@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-#SBATCH -job-name=CSVs
+#SBATCH --job-name=CSVs
 #SBATCH -o logs/make_csvs.out
 #SBATCH -e logs/make_csvs.err
 #SBATCH --nodes=1
@@ -17,5 +17,5 @@ while true; do
         done
         exit
     fi
-    sleep(1000)
+    sleep 1000
 done

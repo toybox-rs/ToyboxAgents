@@ -36,13 +36,14 @@ for agent in agents:
         seed = random.randint(0, 1e7)
         cmdfile = '{0}run_{1}_{2}.sh'.format(script_path, agent, seed)
         delfile = '{0}del_{1}_{2}.sh'.format(script_path, agent, seed)
+        pwd = os.getcwd()
 
         with open(cmdfile, 'w') as f:
             content = """#!/bin/bash
 #
 #SBATCH —job-name={0}_{1}
-#SBATCH -o logs/{0}_{1}.out
-#SBATCH -e logs/{0}_{1}.err 
+#SBATCH -o {4}/logs/{0}_{1}.out
+#SBATCH -e {4}/logs/{0}_{1}.err 
 #SBATCH --nodes=1 
 #SBATCH --ntasks=1 
 #SBATCH --mem=2048
@@ -53,7 +54,7 @@ mkdir -p {2}/{0}/{1}
 rm {2}/{0}/{1}/*
 python -m agents --game Breakout --output {2}/{0} --agentclass {0} --seed {1}
 zip {3} {2}/{0}/*
-""".format(agent, seed, root, tarfile)
+""".format(agent, seed, root, tarfile, pwd)
             f.write(content)
 
         with open(delfile, 'w') as f:
@@ -62,7 +63,8 @@ zip {3} {2}/{0}/*
 #SBATCH --time=04:00
 rm -rf {3}
 rm -rf {2}/{0}/{1}
-""".format(agent, seed, root, cmdfile)
+rm -rf {4}/logs/{0}_{1}.*
+""".format(agent, seed, root, cmdfile, pwd)
             f.write(content)
 
         subprocess.run(['sbatch', cmdfile])
