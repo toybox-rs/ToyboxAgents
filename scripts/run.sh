@@ -1,4 +1,2 @@
-for script in `ls scripts | grep run_`; do
-    echo "running $script"
-    sbatch scripts/$script
-done
+./make_scripts_and_run.py $WORK1/ToyboxAgents
+sbatch ./make_csvs.sh
