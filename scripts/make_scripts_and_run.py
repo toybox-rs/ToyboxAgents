@@ -65,4 +65,5 @@ zip {3} {2}/{0}/*
         time.sleep(2)
         
 with open(script_path + os.sep + 'seeds.txt', 'w') as f:
-    f.write('\n'.join(seeds))
+    for seed in seeds:
+        f.write(str(seed) + '\n')
