@@ -15,3 +15,4 @@ output
 *.pynb_checkpoints
 analysis/.ipynb_checkpoints/
 scripts/slurm
+*#

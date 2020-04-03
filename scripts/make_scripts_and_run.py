@@ -10,6 +10,7 @@ import time, datetime
 
 parser = argparse.ArgumentParser()
 parser.add_argument('root', help='You probably want your work1 location on swarm and \'.\' on your local machine.')
+parser.add_argument('email', help='The email to send notifications to', default=None)
 args = parser.parse_args()
 root = args.root
 
@@ -24,6 +25,8 @@ if not os.path.exists(script_path):
 if not os.path.exists('logs'):
     os.makedirs('logs')
 
+seeds = []
+
 for agent in agents:
     # create empty tar file that we will add to in a distributed fashion
     tarfile = root + os.sep + agent + '.zip'
@@ -34,19 +37,20 @@ for agent in agents:
     # run for 30 trials each
     for _ in range(30):
         seed = random.randint(0, 1e7)
+        seeds.append(seed)
         cmdfile = '{0}run_{1}_{2}.sh'.format(script_path, agent, seed)
-        delfile = '{0}del_{1}_{2}.sh'.format(script_path, agent, seed)
-        pwd = os.getcwd()
 
         with open(cmdfile, 'w') as f:
             content = """#!/bin/bash
 #
-#SBATCH —job-name={0}_{1}
-#SBATCH -o {4}/logs/{0}_{1}.out
-#SBATCH -e {4}/logs/{0}_{1}.err 
+#SBATCH -o logs/{0}_{1}.out
+#SBATCH -e logs/{0}_{1}.err 
 #SBATCH --nodes=1 
 #SBATCH --ntasks=1 
 #SBATCH --mem=2048
+#SBATCH --time=0-01:00:00
+#SBATCH --mail-type=NONE
+#SBATCH --mail-user={4}
 source .env/bin/activate
 pip install -r REQUIREMENTS.txt
 mkdir -p {2}/{0}/{1}
@@ -54,19 +58,11 @@ mkdir -p {2}/{0}/{1}
 rm {2}/{0}/{1}/*
 python -m agents --game Breakout --output {2}/{0} --agentclass {0} --seed {1}
 zip {3} {2}/{0}/*
-""".format(agent, seed, root, tarfile, pwd)
-            f.write(content)
-
-        with open(delfile, 'w') as f:
-            content = """#!/bin/bash
-#
-#SBATCH --time=04:00
-rm -rf {3}
-rm -rf {2}/{0}/{1}
-rm -rf {4}/logs/{0}_{1}.*
-""".format(agent, seed, root, cmdfile, pwd)
+""".format(agent, seed, root, tarfile, args.email)
             f.write(content)
 
         subprocess.run(['sbatch', cmdfile])
         time.sleep(2)
         
+with open(script_path + os.sep + 'seeds.txt', 'w') as f:
+    f.write('\n'.join(seeds))
