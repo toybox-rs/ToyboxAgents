@@ -4,7 +4,7 @@
 
 ToyboxAgents depends on both the core [Toybox package](https://github.com/toybox-rs/toybox-rs) and the [intervention API](https://github.com/toybox-rs/Toybox/tree/master/toybox/interventions), found in the [Toybox testing repository](https://github.com/toybox-rs/Toybox). We recommend running with a virtual environment and installing via pip:
 
-`pip -r REQUIREMENTS.txt`
+`pip install -r REQUIREMENTS.txt`
 
 We recommend you to try to install `ujson`:
 
