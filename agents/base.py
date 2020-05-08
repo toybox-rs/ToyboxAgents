@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
+from typing import Union
 from ctoybox import Toybox, Input
+from toybox.envs.atari.constants import ACTION_MEANING
 import os, signal
 
 try:
@@ -9,7 +11,9 @@ except:
 
 import random
 
-def action_to_string(action: Input):
+def action_to_string(action: Union[Input, int]):
+    if type(action) == int:
+        return ACTION_MEANING[action]
     if action.left:
         return 'left'
     elif action.right:
@@ -74,11 +78,15 @@ class Agent(ABC):
 
         while not self.toybox.game_over() and self.frame_counter < maxsteps:
             action = self.get_action()
-            if action:
-                self.toybox.apply_action(action)
-                self.save_data(path)
-                self.actions.append(action)
+            if action is not None:
+                if isinstance(action, Input):
+                    self.toybox.apply_action(action)
+                elif type(action) == int:
+                    self.toybox.apply_ale_action(action)
+                else: assert False
             else: break
+            self.save_data(path)
+            self.actions.append(action)
 
         assert len(self.actions) == self.frame_counter - 1 
         self.save_actions(path)
