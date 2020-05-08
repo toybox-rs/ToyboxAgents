@@ -33,7 +33,7 @@ def run(args):
         'ypos_pad',
         'xpos_pad_prev',
         'ypos_pad_prev',
-        'indicators',
+        'board_alive',
         'is_far_left',
         'is_far_right',
         'score',
@@ -101,11 +101,19 @@ def run(args):
                 # ypos_pad_prev
                 record.append(prev_state.paddle.position.y if prev_state else None)
                 
-                # The binary representation of this number indicates whether the 
-                # column at the ith bit is a channel
-                indicators = [query.get_column(i) for i in range(query.num_columns())]
-                # indicators
-                record.append(sum(2**i for i, v in enumerate(indicators) if v))
+                # Had considered changing this to be the count for each column.
+                # Then the tradeoff would be either 7 variables that range from 
+                # 0 to 2^18-1 or 18 variables that range from 0 to 6. 
+                # Solution: punt on this and just return a single number that encodes
+                # the whole board.
+                board_alive = 0
+                nrows = query.num_rows()
+                ncols = query.num_columns()
+                for i in range(ncols):
+                    for j, brick in enumerate(query.get_column(i)):
+                        if brick.alive:
+                            board_alive += 2**(i*nrows + j)
+                record.append(board_alive)
                 
                 # Record whether the paddle is on the far left or far right of the screen
                 leftmost_brick = query.get_column(0)[0]
