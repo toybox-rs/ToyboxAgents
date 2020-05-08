@@ -37,7 +37,6 @@ predictors = ['xpos_ball', 'xpos_pad', 'score', 'pad_width', 'ball_speed', 'ball
 
 # #### Discretize all predictors (outcome is already boolean)
 # #### Convert booleans to 0,1
-
 for predictor in predictors:
 #    print(predictor)
     if isinstance(df[predictor][0], (np.bool_, bool)):
@@ -58,7 +57,6 @@ for predictor in predictors:
 # the time points sampled represent the covariates time point - we'll have to get the outcome frome time_lag steps later
 #
 # Make sure the sampled time points aren't within time_lag of the beginning of an episode (so we can sample the covariates from before that)
-
 
 samples = []
 for seed in np.unique(df['seed']):
