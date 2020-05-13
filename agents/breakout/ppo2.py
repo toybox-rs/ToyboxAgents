@@ -7,7 +7,7 @@ from baselines.common.cmd_util import make_vec_env
 
 class PPO2(Agent):
 
-    def __init__(self, toybox: Toybox, seed, withstate=None):
+    def __init__(self, toybox: Toybox, seed=1234, withstate=None):
         super().__init__(toybox)
         self.reset_seed(seed)
 

@@ -61,7 +61,6 @@ with Toybox('breakout', seed=seed) as tb:
   os.makedirs('random_start_ppo2', exist_ok=True)
   agent.play('random_start_ppo2', 1000)
 
-  exit(0)
 
 with Toybox('breakout', seed=seed) as tb:
   tb.write_state_json(random_state)
