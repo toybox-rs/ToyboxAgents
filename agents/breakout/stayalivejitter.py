@@ -16,6 +16,7 @@ class StayAliveJitter(Agent):
 
         with (intervention or breakout.BreakoutIntervention(self.toybox)) as intervention:
             game = intervention.game
+            if len(game.balls) == 0: return input
             ballx = game.balls[0].position.x
             paddlex = game.paddle.position.x
 

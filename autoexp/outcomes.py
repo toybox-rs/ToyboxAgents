@@ -163,11 +163,12 @@ if __name__ == "__main__":
     import os, json
 
     with Toybox('breakout') as tb:
-        target_dir = 'analysis/data/raw/PPO2'
+        target_dir = 'analysis/data/raw/Target'
         data : List[Breakout] = []
+        agent = 'Target'
         actions : List[str] = []
         for seed in sorted(os.listdir(target_dir)):
-            for f in sorted(os.listdir(target_dir + os.sep + seed)):
+            for f in sorted(os.listdir(target_dir + os.sep + agent + os.sep + seed)):
                 fullname = target_dir + os.sep + seed + os.sep + f
                 if f.endswith('json'):
                     with open(fullname, 'r') as js:  

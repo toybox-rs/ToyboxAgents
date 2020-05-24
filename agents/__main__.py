@@ -11,7 +11,7 @@ import toybox
 parser = argparse.ArgumentParser(description='Run an agent on a Toybox game.')
 parser.add_argument('--output',     default='.',                               help='The directory in which to save output (frames and json)')
 parser.add_argument('--agentclass',                             required=True, help='The name of the Agent class')
-parser.add_argument('--game',                                   required=True, help='The name of the game. Must Be CamelCase.')
+parser.add_argument('--game',                                   required=True, help='The name of the game.')
 parser.add_argument('--maxsteps',   default=1e7,      type=int,                help='The maximum number of steps to run.')
 parser.add_argument('--seed',                         type=int)
 args = parser.parse_args()
@@ -28,17 +28,9 @@ with Toybox(game_lower) as tb:
         tb.new_game()
 
     # Run with only one life
-    intervention_str = 'toybox.interventions.{0}.{1}Intervention'.format(
-        game_lower,
-        args.game
-    )
-    try:
-        with eval(intervention_str)(tb) as intervention:
-            intervention.game.lives = 0    
-    except AttributeError as e:
-        print(e)
-        print('You either forget to write write "{0}" in CamelCase or the game {0} is not supported.'.format(args.game))
-        exit(1)        
+    intervener = toybox.interventions.get_intervener(game_lower)
+    with intervener(tb) as intervention:
+        intervention.game.lives = 0    
 
     path = args.output + (os.sep + str(args.seed) if args.seed else '')
 

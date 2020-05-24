@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import Union, List
 from ctoybox import Toybox, Input
 from toybox.envs.atari.constants import ACTION_MEANING
 import os, signal
@@ -14,29 +14,31 @@ import random
 def action_to_string(action: Union[Input, int]):
     if type(action) == int:
         return ACTION_MEANING[action]
-    if action.left:
-        return 'left'
-    elif action.right:
-        return 'right'
-    elif action.up:
-        return 'up'
-    elif action.down:
-        return 'down'
-    elif action.button1:
-        return 'button1'
-    elif action.button2:
-        return 'button2'
+    elif isinstance(action, Input):
+        if action.left:
+            return 'left'
+        elif action.right:
+            return 'right'
+        elif action.up:
+            return 'up'
+        elif action.down:
+            return 'down'
+        elif action.button1:
+            return 'button1'
+        elif action.button2:
+            return 'button2'
+        else: assert False
     else: assert False
 
 
 class Agent(ABC):
 
-    def __init__(self, toybox: Toybox):
+    def __init__(self, toybox: Toybox, seed = 1234):
         self.toybox = toybox
         self.name = self.__class__.__name__
         self.frame_counter = 0
-        self.actions = []
-        self.seed = 1234
+        self.actions : List[Union[str, int]] = []
+        self.seed = seed
 
     def reset_seed(self, seed):
         self.seed = seed

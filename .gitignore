@@ -20,3 +20,4 @@ random_start_*
 breakout_models
 baselines*
 analysis/sa_joint_density.png analysis/sa_xpos_ball_paddle.png analysis/saj_joint_density.png analysis/saj_xpos_ball_paddle.png analysis/ssa_joint_density.png analysis/ssa_xpos_ball_paddle.png analysis/tar_joint_density.png analysis/tar_xpos_ball_paddle.png analysis/xpos_ball_paddle.png
+*.png
