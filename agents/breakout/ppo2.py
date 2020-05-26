@@ -4,12 +4,12 @@ from toybox.testing.envs.gym import get_turtle
 from toybox.interventions.breakout import BreakoutIntervention
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from baselines.common.cmd_util import make_vec_env
+import tensorflow as tf
 
 class PPO2(Agent):
 
     def __init__(self, toybox: Toybox, seed=1234, withstate=None):
-        super().__init__(toybox)
-        self.reset_seed(seed)
+        super().__init__(toybox, seed=seed)
 
         nenv = 1
         frame_stack_size = 4
@@ -31,7 +31,21 @@ class PPO2(Agent):
         self.env = env
         self.turtle = turtle
         self.obs = obs
+        self.tfsession = tf.Session(graph=tf.Graph()).__enter__()
 
+    def __del__(self):
+        # EMT (25/05/2020)
+        # Knowing how context managers are *supposed* to work, this is how
+        # proper exiting of the context manager *should* be written:
+        #
+        # self.tfsession.__exit__(None, None, None)        
+        #
+        # HOWEVER, tensorflow clearly passes around information here, so 
+        # when we execute the above, the session isn't properly cleaned up.
+        # THIS IS A HACK
+        try:
+            self.tfsession.__exit__(True, True, None)
+        except: pass
 
     def get_action(self):
         action = self.model.step(self.obs)[0]

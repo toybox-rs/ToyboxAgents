@@ -91,11 +91,11 @@ aim_left = Aim('left')
 
 outcomes : Dict[str, Outcome] = {
     'MissedBall'  : missed,
-    # 'HitBall'     : hit,
-    # 'MoveOpposite': oppo,
-    # 'MoveAway'    : away,
-    # 'AimRight'    : aim_right,
-    # 'AimLeft'     : aim_left
+    'HitBall'     : hit,
+    'MoveOpposite': oppo,
+    'MoveAway'    : away,
+    'AimRight'    : aim_right,
+    'AimLeft'     : aim_left
 }
 
 # %% [markdown]
@@ -108,11 +108,13 @@ from agents.breakout.ppo2 import PPO2
 from agents.breakout.stayalivejitter import StayAliveJitter
 from ctoybox import Toybox, Input
 
-target = Target         (Toybox('breakout', seed=exp_seed))
-# Skipping PPO2 right now, until I fix the setup.py 
-# to package the model and the code to point to the right place.
-# ppo2   = PPO2           (Toybox('breakout', seed=exp_seed))
-jitter = StayAliveJitter(Toybox('breakout', seed=exp_seed))
+# We will need to feed the agent class and arguments for initialization
+# into the Experiment object later
+agents = {
+  'target' : {'agentclass': Target         , 'agentargs': [Toybox('breakout', seed=exp_seed)], 'agentkwargs' : {}},
+  'ppo2'   : {'agentclass': PPO2           , 'agentargs': [Toybox('breakout', seed=exp_seed)], 'agentkwargs' : {}},
+  'jitter' : {'agentclass': StayAliveJitter, 'agentargs': [Toybox('breakout', seed=exp_seed)], 'agentkwargs' : {}}
+}
 
 # %% [markdown]
 # The next thing we need to do is learn the marginal distributions of
@@ -133,10 +135,8 @@ from toybox.interventions import get_intervener
 states : List[Game] = []
 model_root = 'models.breakout'
 
-agents = [jitter, target]
-agents = []
 
-for agent in agents:
+for agent in [a['agentclass'](*a['agentargs'], **a['agentkwargs']) for a in agents.values()][:0]:
   name = agent.__class__.__name__
   with Toybox('breakout') as tb:
     root = os.path.sep.join(['analysis', 'data', 'raw', name])
@@ -154,7 +154,8 @@ for agent in agents:
     
     intervener = get_intervener('breakout')
     with intervener(tb, modelmod=modelmod, data=states): pass # this should just make the model
-
+  # We need to clean up for any agents that use tensorflow
+  del(agent)
 
 
 # %% [markdown]
@@ -175,8 +176,8 @@ logging.basicConfig(level=logging.CRITICAL)
 
 from toybox.interventions.breakout import BreakoutIntervention
 
-for agent in [target]: #[target, jitter]:
-  data[agent] = {}
+for agentname, agent in [(k, v['agentclass'](*v['agentargs'], **v['agentkwargs'])) for k, v in agents.items()]:
+  data[agentname] = {}
 
   for oname, outcome in outcomes.items():
     print('Testing agent {} for outcome {}'.format(agent.__class__.__name__, oname))
@@ -184,7 +185,7 @@ for agent in [target]: #[target, jitter]:
 
     # Reset Toybox
     tb.new_game()
-    agent.reset_seed(exp_seed)
+    agent.reset(exp_seed)
 
     # Need to get the ball (i.e., start the game)
     input = Input()
@@ -203,7 +204,7 @@ for agent in [target]: #[target, jitter]:
         assert len(state_window)  == 32, '{} <> {} at {}'.format(len(state_window) , 32, step)
         sapairs = list(zip(state_window, action_window))
         if outcome.outcomep(sapairs):
-          data[agent][oname] = sapairs
+          data[agentname][oname] = sapairs
           break
 
       # If we didn't break, continue as usual.
@@ -234,19 +235,26 @@ from autoexp.driver import Experiment
 
 exps : Dict[str, Experiment] = {}
 
-for agent, outcome in data.items():
+for agentname, outcome in data.items():
   for oname, trace in outcome.items():
     if len(trace):
       print('Found positive instance of {} for {}'.format(oname, agent.__class__.__name__))
+      adat = agents[agentname]
       exp = Experiment(
-        agent=agent,
         game_name='breakout',
-        trace=trace,
         seed=exp_seed,
-        outcome_var=outcomes[oname]
+        outcome_var=outcomes[oname],        
+        trace=trace,
+        agentclass=adat['agentclass'],
+        agentargs=adat['agentargs'],
+        agentkwargs=adat['agentkwargs'],
+        outdir = os.sep.join(['exp', adat['agentclass'].__name__, oname])
       )
       intervened_state, intervened_outcome = exp.run()
       exps[oname] = exp
+
+# %% [shell]
+
 
 
 # %%

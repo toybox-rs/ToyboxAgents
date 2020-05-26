@@ -19,6 +19,8 @@ try:
 except:
   from agents.base import Agent
 
+import os
+
 
 class MalformedInterventionError(Exception):
   
@@ -36,10 +38,22 @@ class ConditionalIntervention(Exception):
 
 class Experiment(object):
 
-  def __init__(self, agent: Agent, game_name, trace: List[Tuple[Game, str]], seed: int, outcome_var: Outcome, timelag = 1):
+  def __init__(self, 
+    game_name,
+    seed: int, 
+    outcome_var: Outcome,
+    trace: List[Tuple[Game, str]],
+    agentclass: type,  
+    agentargs = [], 
+    agentkwargs = {},  
+    timelag = 1,
+    outdir='exp'):
     # presumably the context was manually selected to be true?
     # think about/add this later
-    self.agent = agent
+    self.mirror = agentclass(*agentargs, **agentkwargs)
+    self.mirror.reset(seed=seed)
+    self.agent  = agentclass(*agentargs, **agentkwargs)
+    self.agent.reset(seed=seed)
     self.game_name = game_name
     self.seed = seed
     self.interventions : Dict[str, List[Any]] = OrderedDict()
@@ -48,6 +62,8 @@ class Experiment(object):
     self.timelag = -1 * abs(timelag)
     self.mutation_points = set(Experiment.generate_mutation_points(self.trace[0][0]))
     self.outcome_var = outcome_var
+    self.outdir = outdir
+    os.makedirs(outdir, exist_ok=True)
 
   def get_intervention_state(self):
     return self.trace[self.timelag][0]
@@ -136,39 +152,32 @@ class Experiment(object):
 
         sapairs: List[Tuple[Game, str]] = []
 
-        with Toybox(self.game_name, seed=self.seed, withstate=s1.encode()) as tb:
-          mirror = copy(self.agent)
-          mirror.toybox = tb
-          mirror.seed = self.seed
-
-        with Toybox(self.game_name, seed=self.seed, withstate=s1_.encode()) as tb:
-          agent = copy(self.agent)
-          agent.toybox = tb
-          agent.seed = self.seed
-
         # TODO: make this take a list of tuples [(Breakout, str)]
         original_outcome = self.outcome_var.outcomep(self.trace + [self.outcome_state])
 
-        print("looping from t={} to >0".format(t))
+        print("looping from t={} to >0 for {}".format(t, self.agent.__class__.__name__))
         # t is initialized from self.time_lag; which is negative, therefore we count up to zero.
-        while t < 0:
-          agent.play('exp_agent', 1)
-          mirror.play('exp_mirror', 1)
+        while t <= 0:
+          self.agent.play(self.outdir + os.sep + 'intervened' , 2, save_states=True)
+          self.mirror.play(self.outdir + os.sep + 'control', 2, save_states=True)
 
-          game = get_property(self.game_name)
+          game = get_state_object(self.game_name)
+          intervention = get_intervener(self.game_name)
 
-          s2 = game.decode(mirrorw.toybox.state_to_json())
-          s2_ = game.decode(agent.toybox.state_to_json())
+          s2  = game.decode(intervention(self.mirror.toybox), self.mirror.toybox.state_to_json(), game)
+          s2_ = game.decode(intervention(self.agent.toybox), self.agent.toybox.state_to_json(), game)
 
-          diff1, diff2 = check_unconditional(s1, s1_, s2, s2_)
+          diff1, diff2 = self.check_unconditional(s1, s1_, s2, s2_)
 
           print('diff1:', diff1)
           print('diff2:', diff2)
-          print('agent action:', agent.actions[-1])
-          print('mirror action:', mirror.actions[-1])
+          print('agent action:\t', self.agent.actions[-1])
+          print('mirror action:\t', self.mirror.actions[-1])
 
-          sapairs.append(s2_, agent.actions[-1])
+          sapairs.append((s2_, self.agent.actions[-1]))
           t += 1
+
+        print('number of state-action pairs', len(sapairs))
 
         intervened_outcome = self.outcome_var.outcomep(sapairs)
         

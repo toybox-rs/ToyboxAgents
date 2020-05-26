@@ -10,9 +10,13 @@ class StayAliveJitter(Agent):
         super().__init__(toybox)
         seed(self.seed)
 
-    def get_action(self, intervention=None):
+        # Need to get a ball
         input = Input()
         input.button1 = True
+        self.toybox.apply_action(input)
+
+    def get_action(self, intervention=None):
+        input = Input()
 
         with (intervention or breakout.BreakoutIntervention(self.toybox)) as intervention:
             game = intervention.game
