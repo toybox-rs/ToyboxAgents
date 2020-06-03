@@ -53,7 +53,7 @@
 # * `exp_seed` We have the ability to control randomness, so we should. We set the
 #    seed for any component that allows us to do so. This is an arbitrary number. 
 #    I picked the date for when I started writing this tutorial in its current form.
-# * `max_steps` We want to run the agnets long enough to be reasonable certain that
+# * `max_steps` We want to run the agents long enough to be reasonable certain that
 #    we will detect the outcome. However, we do not want to run them for too long.
 # * `window` This is the window of context before the outcome. Some outcomes are 
 #    computed over a fixed window of time (e.g., we only need the last two states
@@ -65,6 +65,7 @@
 
 # %%
 from agents.base import Agent, action_to_string
+from ctoybox import Input
 from toybox.interventions.core import Game
 
 from typing import *
@@ -75,7 +76,11 @@ exp_seed  = 5202020
 max_steps = 2000 # We don't want to wait forever!
 window    = -32   # So we can try out the backwards search
 
-data : Dict[Agent, Dict[Outcome, List[Game]]] = {}
+data : Dict[str, Dict[str, List[Game]]] = {}
+
+get_ball = Input()
+get_ball.button1 = True
+
 
 # %% [markdown]
 # Our next step is to instantiate the outcomes:
@@ -90,12 +95,12 @@ aim_right = Aim('right')
 aim_left = Aim('left')
 
 outcomes : Dict[str, Outcome] = {
-    'MissedBall'  : missed,
+    # 'MissedBall'  : missed,
     'HitBall'     : hit,
-    'MoveOpposite': oppo,
-    'MoveAway'    : away,
-    'AimRight'    : aim_right,
-    'AimLeft'     : aim_left
+    # 'MoveOpposite': oppo,
+    # 'MoveAway'    : away,
+    # 'AimRight'    : aim_right,
+    # 'AimLeft'     : aim_left
 }
 
 # %% [markdown]
@@ -106,54 +111,65 @@ outcomes : Dict[str, Outcome] = {
 from agents.breakout.target import Target
 from agents.breakout.ppo2 import PPO2
 from agents.breakout.stayalivejitter import StayAliveJitter
-from ctoybox import Toybox, Input
+from agents.breakout.stayalive import StayAlive
+from ctoybox import Toybox
 
 # We will need to feed the agent class and arguments for initialization
 # into the Experiment object later
-agents = {
-  'target' : {'agentclass': Target         , 'agentargs': [Toybox('breakout', seed=exp_seed)], 'agentkwargs' : {}},
-  'ppo2'   : {'agentclass': PPO2           , 'agentargs': [Toybox('breakout', seed=exp_seed)], 'agentkwargs' : {}},
-  'jitter' : {'agentclass': StayAliveJitter, 'agentargs': [Toybox('breakout', seed=exp_seed)], 'agentkwargs' : {}}
-}
+agents = [
+  StayAlive(Toybox('breakout', seed=exp_seed))
+  # 'Target'    : {'agentclass': Target         , 'agentargs': [Toybox('breakout', seed=exp_seed)], 'agentkwargs' : {}},
+  # 'PPO2'      : {'agentclass': PPO2           , 'agentargs': [Toybox('breakout', seed=exp_seed)], 'agentkwargs' : {}},
+  # 'Jitter'    : {'agentclass': StayAliveJitter, 'agentargs': [Toybox('breakout', seed=exp_seed)], 'agentkwargs' : {}}
+]
 
 # %% [markdown]
 # The next thing we need to do is learn the marginal distributions of
 # the core variables. If we want conditional distributions, we will 
-# need to partition the data and save multiple models. Note that 
-# partitioning the data will lead to 
+# need to partition the data and save multiple models.
 
 # %% [shell]
 
 # mkdir models
 # touch models/__init__.py
 
+# %% [markdown]
+# Now we have a destintion directory for the models. 
+# 
+
 # %% 
 import json
 import os
 from toybox.interventions import get_intervener
+from toybox.interventions.breakout import BreakoutIntervention
 
 states : List[Game] = []
 model_root = 'models.breakout'
 
 
-for agent in [a['agentclass'](*a['agentargs'], **a['agentkwargs']) for a in agents.values()][:0]:
+for agent in agents:
   name = agent.__class__.__name__
   with Toybox('breakout') as tb:
     root = os.path.sep.join(['analysis', 'data', 'raw', name])
+    print('Loading data from', root)
     modelmod = model_root + '.' + name.lower()
-    for seed in os.listdir(root):
+    print('Creating module', modelmod)
+    for seed in sorted(os.listdir(root)):
+      if seed.startswith('.'): continue
       trial = root + os.sep + seed
-      for f in os.listdir(trial):
+      for f in sorted(os.listdir(trial))[:500]:
         if f.endswith('json'):
           with open(trial + os.sep + f, 'r') as state:
-            states.append(Breakout.decode(None, json.load(state), Breakout)) 
+            state = Breakout.decode(BreakoutIntervention(tb), json.load(state), Breakout)
+            states.append(state) 
       # We are only going to learn from 1 trial, since this 
       # is a demonstration, and we don't want it to take too much time.
       # Comment out this break to use all of the data
       break
+
     
     intervener = get_intervener('breakout')
-    with intervener(tb, modelmod=modelmod, data=states): pass # this should just make the model
+    with intervener(tb, modelmod=modelmod, data=states): pass
   # We need to clean up for any agents that use tensorflow
   del(agent)
 
@@ -176,11 +192,11 @@ logging.basicConfig(level=logging.CRITICAL)
 
 from toybox.interventions.breakout import BreakoutIntervention
 
-for agentname, agent in [(k, v['agentclass'](*v['agentargs'], **v['agentkwargs'])) for k, v in agents.items()]:
+for agentname, agent in [(a.__class__.__name__, a) for a in agents]:
   data[agentname] = {}
 
   for oname, outcome in outcomes.items():
-    print('Testing agent {} for outcome {}'.format(agent.__class__.__name__, oname))
+    print('Testing agent {} for outcome {}'.format(agentname, oname))
     tb = agent.toybox
 
     # Reset Toybox
@@ -188,9 +204,7 @@ for agentname, agent in [(k, v['agentclass'](*v['agentargs'], **v['agentkwargs']
     agent.reset(exp_seed)
 
     # Need to get the ball (i.e., start the game)
-    input = Input()
-    input.button1 = True
-    tb.apply_action(input)  
+    tb.apply_action(get_ball)  
 
     step = 0
     states = []
@@ -235,23 +249,24 @@ from autoexp.driver import Experiment
 
 exps : Dict[str, Experiment] = {}
 
-for agentname, outcome in data.items():
+for agent in agents:
+  agentname = agent.__class__.__name__
+  outcome = data[agentname]
   for oname, trace in outcome.items():
     if len(trace):
-      print('Found positive instance of {} for {}'.format(oname, agent.__class__.__name__))
-      adat = agents[agentname]
+      print('\nFound positive instance of {} for {}'.format(oname, agentname))
       exp = Experiment(
         game_name='breakout',
         seed=exp_seed,
         outcome_var=outcomes[oname],        
         trace=trace,
-        agentclass=adat['agentclass'],
-        agentargs=adat['agentargs'],
-        agentkwargs=adat['agentkwargs'],
-        outdir = os.sep.join(['exp', adat['agentclass'].__name__, oname])
+        agent=agent,
+        outdir = os.sep.join(['exp', agentname, oname])
       )
-      intervened_state, intervened_outcome = exp.run()
-      exps[oname] = exp
+    exp.agent.toybox.apply_action(get_ball)
+
+    intervened_state, intervened_outcome = exp.run()
+    exps[oname] = exp
 
 # %% [shell]
 

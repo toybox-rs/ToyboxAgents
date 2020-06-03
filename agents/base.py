@@ -12,7 +12,11 @@ except:
 
 import random
 
-def action_to_string(action: Union[Input, int]):
+def action_to_string(action: Union[Input, int, str]):
+    if action is None: 
+        return 'noop'
+    if type(action) == str: 
+        return action
     if type(action) == int:
         return ACTION_MEANING[action]
     elif isinstance(action, Input):
@@ -31,6 +35,31 @@ def action_to_string(action: Union[Input, int]):
         else:
             return 'noop'
     else: assert False
+
+
+def string_to_input(action: str) -> Input:
+    actobj = Input()
+    if action is None or action == '':
+        return actobj
+    if action == 'left':
+        actobj.left = True
+        return actobj
+    if action == 'right':
+        actobj.right = True
+        return actobj
+    if action == 'up':
+        actobj.up = True
+        return actobj
+    if action == 'down':
+        actobj.down = True
+        return actobj
+    if action == 'fire' or action == 'button1':
+        actobj.button1 = True
+        return actobj
+    if action == 'button2':
+        actobj.button2 = True
+        return actobj
+
 
 
 class Agent(ABC):
@@ -96,7 +125,7 @@ class Agent(ABC):
         os.makedirs(path, exist_ok=True)
         self.save_data(path, write_json_to_file, save_states)
 
-        while not self.toybox.game_over() and self.frame_counter < maxsteps:
+        while not self.toybox.game_over() and self.frame_counter <= maxsteps:
             action = self.get_action()
             if action is not None:
                 if isinstance(action, Input):

@@ -8,6 +8,20 @@ from abc import ABC, abstractmethod
 def sign(n):
   return -1 if n < 0 else 1 if n > 0 else 0
 
+class InadequateWindowError(Exception):
+
+    def __init__(self, got, expecting, outcome):
+        self.got = got
+        self.expecting = expecting
+        self.outcome = outcome
+        super().__init__('Need at least {} states to determine outcome {}; got {}'.format(expecting, outcome, got))
+
+    @staticmethod
+    def check_window(pairs: List[Tuple[Breakout, str]], expecting: int, outcome: type):
+        got = len(pairs)
+        if got < expecting: raise InadequateWindowError(got, expecting, outcome.__name__)
+
+
 class Outcome(ABC):
 
     @abstractmethod
@@ -20,7 +34,7 @@ class ActionTaken(Outcome):
         self.action = action
 
     def outcomep(self, pairs):
-        assert len(pairs) == 1, 'ActionTaken is only applied over a single state-action-pair'
+        InadequateWindowError.check_window(pairs, 1, ActionTaken)
         return pairs[0][1] == self.action
 
 
@@ -28,7 +42,7 @@ class MissedBall(Outcome):
 
     def outcomep(self, pairs: List[Tuple[Breakout, str]]):
         # We need at least two states in order to tell if we've missed
-        assert len(pairs) > 1
+        InadequateWindowError.check_window(pairs, 2, MissedBall)
         # If we have 0 balls at tn, but we had at least one
         # at tn-1, then we have missed
         last_state = pairs[-1][0]
@@ -39,9 +53,11 @@ class MissedBall(Outcome):
 class HitBall(Outcome):
 
     def outcomep(self, pairs: List[Tuple[Breakout, str]]):
+        # We need at least three states in order to tell if we've hit the ball
+        InadequateWindowError.check_window(pairs, 3, HitBall)
+
         # before: heading down
         # after: heading up
-        assert len(pairs) > 2
         states = [p[0] for p in pairs]
         # heading down --> increasingly positive y value
         # don't want multiple hits
@@ -91,6 +107,10 @@ class MoveOpposite(Outcome):
 
   def outcomep(self, pairs):
     # ball must be moving in the same direction for the whole window
+
+    # We need at least two states to determine direction 
+    InadequateWindowError.check_window(pairs, 2, MoveOpposite)
+
     prevs = [p[0] for p in pairs[:-1]]
     states = [p[0] for p in pairs[1:]]
     actions = [p[1] for p in pairs[1:]]    
@@ -113,6 +133,8 @@ class MoveAway(Outcome):
     # when the paddle moves AWAY from the ball
 
   def outcomep(self, pairs):
+    InadequateWindowError.check_window(pairs, 2, MoveAway)
+    
     away_dir = 0  
     
     for i, (s1, a) in enumerate(pairs[:-1]):
@@ -146,6 +168,8 @@ class Aim(Outcome):
         else: assert False
 
     def outcomep(self, pairs):
+        # Two data points seems too small, but we can update this later
+        InadequateWindowError.check_window(pairs, 2, Aim)
         for s, _ in pairs:
             if not len(s.balls): continue
             eps = s.paddle_width / 4.
