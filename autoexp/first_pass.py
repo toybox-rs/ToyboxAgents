@@ -117,10 +117,10 @@ from ctoybox import Toybox
 # We will need to feed the agent class and arguments for initialization
 # into the Experiment object later
 agents = [
-  StayAlive(Toybox('breakout', seed=exp_seed))
-  # 'Target'    : {'agentclass': Target         , 'agentargs': [Toybox('breakout', seed=exp_seed)], 'agentkwargs' : {}},
-  # 'PPO2'      : {'agentclass': PPO2           , 'agentargs': [Toybox('breakout', seed=exp_seed)], 'agentkwargs' : {}},
-  # 'Jitter'    : {'agentclass': StayAliveJitter, 'agentargs': [Toybox('breakout', seed=exp_seed)], 'agentkwargs' : {}}
+  StayAlive(Toybox('breakout', seed=exp_seed)),
+  # Target(Toybox('breakout', seed=exp_seed)),
+  # PPO2(Toybox('breakout', seed=exp_seed)),
+  # StayAliveJitter(Toybox('breakout', seed=exp_seed))
 ]
 
 # %% [markdown]
@@ -147,7 +147,7 @@ states : List[Game] = []
 model_root = 'models.breakout'
 
 
-for agent in agents:
+for agent in agents[:0]:
   name = agent.__class__.__name__
   with Toybox('breakout') as tb:
     root = os.path.sep.join(['analysis', 'data', 'raw', name])

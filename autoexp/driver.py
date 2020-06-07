@@ -191,9 +191,11 @@ class Experiment(object):
     #print('check_unconditional: ', diff1, diff2)
 
     if len(diff2) < len(diff1): 
+      print('diff1:', diff1, '\tdiff2:', diff2)
       raise MalformedInterventionError(prop, diff1.difference(diff2))
     
     elif len(diff2) > len(diff1):
+      print('diff1:', diff1, '\tdiff2:', diff2)
       raise ConditionalIntervention(prop, diff2.difference(diff1))   
 
     return diff1, diff2
@@ -210,7 +212,7 @@ class Experiment(object):
       # possible mutation points...
       while len(self.interventions) < len(self.mutation_points):
         mutations_attempted = sum([len(tried) for tried in self.interventions.values()])
-        if len(self.interventions) and ((mutations_attempted % 100) == 0):
+        if len(self.interventions) and ((mutations_attempted % 250) == 0):
           # print('\n\tInterventions attempted:\n\t=======================\n\tVariable\tCount\n\t----------------------' + \
           #   ''.join(['\n\t{}:\t{}'.format(k, len(v)) for k, v in self.interventions.items()]))
           # print('\t---------------------')
@@ -237,7 +239,7 @@ class Experiment(object):
         self.agent.reset()
 
         while t < 0:
-          self.agent.play(self.outdir + os.sep + 'intervened', 1, save_states=True)
+          self.agent.play(self.outdir + os.sep + 'intervened' + os.sep + prop, 1, save_states=True)
           s2_ = game.decode(intervention,  self.agent.toybox.state_to_json(), game)
           with Toybox(self.game_name, seed=self.seed, withstate=s1.encode()) as tb:
             for i, action in enumerate(self.agent.actions):
@@ -256,6 +258,7 @@ class Experiment(object):
                 self.mutation_points.remove(m[0])
               if m[0] in self.interventions:
                 del self.interventions[m[0]]
+            continue
           except ConditionalIntervention as e:
             print('\t\t'+str(e))
             print('\t\tRemoving {} from mutation list'.format(e.diff))
@@ -264,6 +267,7 @@ class Experiment(object):
                 del self.interventions[m[0]]
               if m[0] in self.mutation_points:
                 self.mutation_points.remove(m[0])
+            continue
           sapairs.append((s2_, self.agent.actions[-1]))
           t += 1
         # print('\tNumber of state-action pairs', len(sapairs))
@@ -277,6 +281,7 @@ class Experiment(object):
           print(e)
           print('Resetting timelag to minimum window of {}'.format(e.expecting))
           self.timelag = -1 * e.expecting
+          continue
 
       self.timelag = max(-1 * len(self.trace), self.timelag * 2)
       print('Doubling lookback to {}\n'.format(self.timelag))
