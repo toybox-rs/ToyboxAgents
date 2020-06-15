@@ -21,5 +21,8 @@ class InadequateWindowError(Exception):
 
 class Outcome(ABC):
 
+    def __init__(self, minwindow):
+        self.minwindow = minwindow
+
     @abstractmethod
     def outcomep(self, pairs: List[Tuple[Game, str]]) -> bool: pass

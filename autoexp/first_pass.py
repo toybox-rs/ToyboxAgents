@@ -69,7 +69,7 @@ from ctoybox import Input
 from toybox.interventions.core import Game
 
 from typing import *
-from autoexp.outcomes import *
+from autoexp.outcomes.breakout import *
 
 
 exp_seed  = 5202020
@@ -96,7 +96,7 @@ aim_left = Aim('left')
 
 outcomes : Dict[str, Outcome] = {
     # 'MissedBall'  : missed,
-    'HitBall'     : hit,
+    'HitBall'     : (hit, missed),
     # 'MoveOpposite': oppo,
     # 'MoveAway'    : away,
     # 'AimRight'    : aim_right,
@@ -195,7 +195,7 @@ from toybox.interventions.breakout import BreakoutIntervention
 for agentname, agent in [(a.__class__.__name__, a) for a in agents]:
   data[agentname] = {}
 
-  for oname, outcome in outcomes.items():
+  for oname, (outcome, counterfactual) in outcomes.items():
     print('Testing agent {} for outcome {}'.format(agentname, oname))
     tb = agent.toybox
 
@@ -206,38 +206,30 @@ for agentname, agent in [(a.__class__.__name__, a) for a in agents]:
     # Need to get the ball (i.e., start the game)
     tb.apply_action(get_ball)  
 
-    step = 0
-    states = []
+    found = False
+
+    # first play the agent for the requisite number of steps
+    agent.play(maxsteps=abs(window), write_json_to_file=False, save_states=True)
+    step = len(agent.states)
 
     while (not tb.game_over()) and (step < max_steps):
-      if step > abs(window):
-        # Test to see if we have observed the outcome yet
-        action_window = agent.actions[window:]
-        state_window = states[window:]
-        assert len(action_window) == 32, '{} <> {} at {}'.format(len(action_window), 32, step)
-        assert len(state_window)  == 32, '{} <> {} at {}'.format(len(state_window) , 32, step)
-        sapairs = list(zip(state_window, action_window))
-        if outcome.outcomep(sapairs):
-          data[agentname][oname] = sapairs
-          break
+      # Test to see if we have observed the outcome yet
+      action_window = agent.actions[window:]
+      state_window = agent.states[window:]
+      sapairs = list(zip(state_window, action_window))
 
-      # If we didn't break, continue as usual.
-      # This more or less copies the play method of the base agent.
-      action = agent.get_action()
+      if outcome.outcomep(sapairs):
+        data[agentname][oname] = sapairs
+        print('Found positive instance of {} for {} during window [{}, {}]!'.format(oname, agentname, step + window, step))
+        found = True
+        break
 
-      if action is not None:
-        agent.actions.append(action_to_string(action))
-        if isinstance(action, Input):
-          tb.apply_action(action)
-        elif type(action) == int:
-          tb.apply_ale_action(action)
-        else: assert False
-      else: break
-      
-      with BreakoutIntervention(tb, modelmod='models.breakout.' + agent.__class__.__name__.lower()) as intervention:
-        states.append(Breakout.decode(intervention, tb.state_to_json(), Breakout))
-
+      # If we didn't break, take one step
+      # This more or less copies the play method of the base agent
+      # reproduced here to bring the agent up to speed.
+      agent.step('/dev/null', False, True)
       step += 1
+    if not found: print('Ran {} for {} steps; did not find outcome {}'.format(agent.__class__.__name__, step, oname))
 
 # %% [markdown]
 # Instantiate an experiment for each of the outcomes we 
@@ -246,26 +238,44 @@ for agentname, agent in [(a.__class__.__name__, a) for a in agents]:
 
 # %%
 from autoexp.driver import Experiment
+from autoexp.vars.derived.breakout import XDistanceBallPaddle
 
 exps : Dict[str, Experiment] = {}
 
 for agent in agents:
   agentname = agent.__class__.__name__
   outcome = data[agentname]
+  agent.reset()
   for oname, trace in outcome.items():
+    modelmod = 'models.breakout.' + agentname.lower()
+    sample_data_dir = os.path.sep.join(['analysis', 'data', 'raw', agentname])
     if len(trace):
-      print('\nFound positive instance of {} for {}'.format(oname, agentname))
       exp = Experiment(
         game_name='breakout',
         seed=exp_seed,
-        outcome_var=outcomes[oname],        
+        modelmod=modelmod,
+        outcome_var=outcomes[oname][0],        
+        counterfactual=outcomes[oname][1],
+        core_constraints={
+          r'bricks\[\d+?\]\.size\..*', 
+          r'bricks\[\d+?\]\.position\..*',
+          r'bricks\[\d+?\]\.color\..*',
+          r'bricks\[\d+?\]\.[(col)|(row)|(points)|(depth)]',
+        },
+        derived_vars={
+          XDistanceBallPaddle(modelmod)
+        },
+        sample_data_dir=sample_data_dir,
         trace=trace,
         agent=agent,
         outdir = os.sep.join(['exp', agentname, oname])
       )
+    else: 
+      print('\nNo instances of {} found'.format(oname))
     exp.agent.toybox.apply_action(get_ball)
 
     intervened_state, intervened_outcome = exp.run()
+    print(intervened_state, intervened_outcome)
     exps[oname] = exp
 
 # %% [shell]

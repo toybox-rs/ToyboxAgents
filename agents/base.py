@@ -77,23 +77,19 @@ class Agent(ABC):
         self.toybox.set_seed(seed)
         random.seed(seed)
 
-
     def _next_file(self, path):
         self.frame_counter += 1
         return path + os.sep + self.name + str(self.frame_counter).zfill(5)
 
-    def save_data(self, path: str, write_json_to_file, save_states):
-        f = self._next_file(path)
-
+    def write_data(self, path: str, write_json_to_file, save_states):
         if write_json_to_file:
+            f = self._next_file(path)
             img = f + '.png'
             json = f + '.json'
             self.toybox.save_frame_image(img)
             with open(json, 'w') as ff:
                 ujson.dump(self.toybox.state_to_json(), ff)
         
-        if save_states:
-            self.states.append(state_from_toybox(self.toybox))
 
     def save_actions(self, path):
         os.makedirs(path, exist_ok=True)
@@ -117,27 +113,37 @@ class Agent(ABC):
         if seed:
             self._reset_seed(seed)
 
-    def play(self, path, maxsteps, write_json_to_file=True, save_states=False):
+    def step(self, path, write_json_to_file, save_states):
+        action = self.get_action()
+        self.actions.append(action)
+
+        if action is not None:
+            if isinstance(action, Input):
+                self.toybox.apply_action(action)
+            elif type(action) == int:
+                self.toybox.apply_ale_action(action)
+            else: assert False
+        
+        if write_json_to_file:
+            self.write_data(path, write_json_to_file, save_states)
+        else: self.frame_counter += 1
+
+        if save_states:
+            self.states.append(state_from_toybox(self.toybox))
+            
+
+
+    def play(self, path=None, maxsteps=2000, write_json_to_file=True, save_states=False, startstate=None):
         # set the signal handler to save actions when we are interrupted.
         signal.signal(signal.SIGINT, self.kill_and_record(path))
         signal.signal(signal.SIGTERM, self.kill_and_record(path))
         
-        os.makedirs(path, exist_ok=True)
-        self.save_data(path, write_json_to_file, save_states)
+        if path: os.makedirs(path, exist_ok=True)
+        if startstate: self.toybox.write_state_json(startstate.encode())
+        self.write_data(path, write_json_to_file, save_states)
 
         while not self.toybox.game_over() and self.frame_counter <= maxsteps:
-            action = self.get_action()
-            if action is not None:
-                if isinstance(action, Input):
-                    self.toybox.apply_action(action)
-                elif type(action) == int:
-                    self.toybox.apply_ale_action(action)
-                else: assert False
-            else: break
-            if write_json_to_file:
-                self.save_data(path, write_json_to_file, save_states)
-            if save_states:
-                self.states.append(state_from_toybox(self.toybox))
-            self.actions.append(action)
-
-        self.save_actions(path)
+            # print('STEP', self.frame_counter, maxsteps)
+            self.step(path, write_json_to_file, save_states)
+ 
+        if path: self.save_actions(path)

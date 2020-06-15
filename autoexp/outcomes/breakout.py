@@ -8,18 +8,22 @@ from .base import *
 class ActionTaken(Outcome):
 
     def __init__(self, action):
+        super().__init__(1)
         self.action = action
 
     def outcomep(self, pairs):
-        InadequateWindowError.check_window(pairs, 1, ActionTaken)
+        InadequateWindowError.check_window(pairs, self.minwindow, ActionTaken)
         return pairs[0][1] == self.action
 
 
 class MissedBall(Outcome):
 
+    def __init__(self):
+        super().__init__(2)
+
     def outcomep(self, pairs: List[Tuple[Breakout, str]]):
         # We need at least two states in order to tell if we've missed
-        InadequateWindowError.check_window(pairs, 2, MissedBall)
+        InadequateWindowError.check_window(pairs, self.minwindow, MissedBall)
         # If we have 0 balls at tn, but we had at least one
         # at tn-1, then we have missed
         last_state = pairs[-1][0]
@@ -29,37 +33,53 @@ class MissedBall(Outcome):
 
 class HitBall(Outcome):
 
+    def __init__(self):
+        super().__init__(3)
+
     def outcomep(self, pairs: List[Tuple[Breakout, str]]):
         # We need at least three states in order to tell if we've hit the ball
-        InadequateWindowError.check_window(pairs, 3, HitBall)
-
+        InadequateWindowError.check_window(pairs, self.minwindow, HitBall)
         # before: heading down
         # after: heading up
         states = [p[0] for p in pairs]
-        # heading down --> increasingly positive y value
+        # heading down --> positive diff
+        # heading up --> negative diff
         # don't want multiple hits
         heading_down = None
+        diffs = []
         for s1, s2 in zip(states[:-1], states[1:]):
+
+            # We have missed the ball; therefore, we have not hit the ball
             if not (len(s1.balls) and len(s2.balls)): 
                 return False
 
             diff = s2.balls[0].position.y - s1.balls[0].position.y
+            diffs.append(diff)
 
-            if heading_down is None:                
-                if diff < 0: return False # heading up at the start
-                if diff > 0: heading_down = True
-            elif heading_down:
-                if diff < 0: heading_down = False
-            else: 
-                if diff > 0: return False # window too big
+            if heading_down is None: # not yet set               
+                if diff < 0: 
+                    return False # heading up at the start
+                if diff > 0: 
+                    heading_down = True    
+            elif heading_down is True:
+                if diff < 0: 
+                    heading_down = False
+            elif heading_down is False:
+                if diff > 0: 
+                    return False # window too big
 
-        return not heading_down
+        if all([d == 0 for d in diffs]):
+            raise ValueError('No change in ball y position for {} consecutive states'.format(len(pairs)))
+        return heading_down is False 
 
 
 class MoveOpposite(Outcome):
     # cases where the ball is traveling in one direction, 
     # but the agent moves in the opposite direction,
     # for over 50% of the pairs
+
+  def __init__(self):
+    super().__init__(2)
 
   def direction(self, pairs):
     ball_dir = 0
@@ -86,7 +106,7 @@ class MoveOpposite(Outcome):
     # ball must be moving in the same direction for the whole window
 
     # We need at least two states to determine direction 
-    InadequateWindowError.check_window(pairs, 2, MoveOpposite)
+    InadequateWindowError.check_window(pairs, self.minwindow, MoveOpposite)
 
     prevs = [p[0] for p in pairs[:-1]]
     states = [p[0] for p in pairs[1:]]
@@ -109,8 +129,11 @@ class MoveAway(Outcome):
     # Basically the same as MoveOpposite, but restricted to cases 
     # when the paddle moves AWAY from the ball
 
+  def __init__(self):
+    super().__init__(2)
+
   def outcomep(self, pairs):
-    InadequateWindowError.check_window(pairs, 2, MoveAway)
+    InadequateWindowError.check_window(pairs, self.minwindow, MoveAway)
     
     away_dir = 0  
     
@@ -133,6 +156,7 @@ class Aim(Outcome):
     """An agent is aiming if the region of interest of the paddle remains within some epsilon of the ball's x position."""
 
     def __init__(self, location):
+        super().__init__(2)
         self.location = location
 
     def compute_center(self, state):
@@ -146,7 +170,7 @@ class Aim(Outcome):
 
     def outcomep(self, pairs):
         # Two data points seems too small, but we can update this later
-        InadequateWindowError.check_window(pairs, 2, Aim)
+        InadequateWindowError.check_window(pairs, self.minwindow, Aim)
         for s, _ in pairs:
             if not len(s.balls): continue
             eps = s.paddle_width / 4.

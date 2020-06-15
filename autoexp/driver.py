@@ -2,24 +2,29 @@
 Experimentation driver loop
 """
 from collections import OrderedDict
+from copy import copy
+from random import choice as sample
+from tabulate import tabulate
+from typing import List, Dict, Tuple, Any, Union, Set
 
 from ctoybox import Toybox, Input
 from toybox.interventions import get_intervener, get_state_object
 from toybox.interventions.core import Game, get_property, parse_property_access
 from toybox.interventions.base import BaseMixin, Collection, SetEq
 
-from copy import copy
-from random import choice as sample
-from tabulate import tabulate
-from typing import List, Dict, Tuple, Any, Union
 
-from .outcomes import Outcome, InadequateWindowError
+from .outcomes.base import Outcome, InadequateWindowError
+from .vars import Var
+from .vars.derived import Derived
+from .vars.core import get_core_vars
+
 
 try: 
   from ..agents.base import Agents, action_to_string, string_to_input
 except:
   from agents.base import Agent, action_to_string, string_to_input
 
+import ujson as json
 import logging
 import math
 import os
@@ -36,9 +41,10 @@ class MalformedInterventionError(Exception):
 
 class ConditionalIntervention(Exception):
 
-  def __init__(self, prop, diff):
-    super().__init__('Intervention {} changed other keys: {}'.format(prop, ', '.join([t[0] for t in diff])))
-    self.diff = diff
+  def __init__(self, prop, diff1, diff2):
+    super().__init__('Intervention {} changed other keys: {}'.format(prop, ', '.join([t[0] for t in diff2])))
+    self.to_remove = diff1
+    self.changed = diff2
     self.prop = prop
 
 
@@ -51,77 +57,151 @@ class LikelyConstantError(Exception):
     self.trials = trials
 
 
+class Trace(object):
+
+  def __init__(self, game_name: str, modelmod: str, seed: int, trace: List[Tuple[Game, str]]):
+    self.game_name = game_name
+    self.modelmod = modelmod
+    self.seed = seed
+    self.full = trace
+    self.outcome_state = trace[-1][0]
+    self._trace = trace[:-1]
+
+  def __len__(self):
+    return len(self.full)
+
+  def __getitem__(self, i):
+    return self.full[i]
+
+  def get_state_trace(self) -> List[Game]:
+    game = get_state_object(self.game_name)
+    intervener = get_intervener(self.game_name)
+    with Toybox(self.game_name, seed=self.seed) as tb:
+      with intervener(tb, modelmod=self.modelmod) as i:
+        # make fresh objects
+        return [game.decode(i, t[0].encode(), game) for t in self._trace]
+
+  def get_trace(self) -> List[Tuple[Game, str]]:
+    game = get_state_object(self.game_name)
+    intervener = get_intervener(self.game_name)
+    with Toybox(self.game_name, seed=self.seed) as tb:
+      with intervener(tb, modelmod=self.modelmod) as i:
+        # make fresh objects
+        return [(game.decode(i, t.encode(), game), a) for t, a in self._trace]
+
+  def get_intervention_state(self, tb: Toybox, timelag: int) -> Game:
+    game = get_state_object(self.game_name)
+    intervener = get_intervener(self.game_name)(tb, modelmod=self.modelmod)
+    return game.decode(intervener, self.get_state_trace()[timelag].encode(), game)
+
+
 class Experiment(object):
 
   def __init__(self, 
     game_name,
     seed: int, 
+    modelmod: str, 
     outcome_var: Outcome,
+    counterfactual: Outcome,
     trace: List[Tuple[Game, str]],
     agent: Agent,  
+    # Now the optional inputs
+    derived_vars: Set[Derived] = set(),
+    # For learning marginals
+    sample_data_dir = '',
+    # An input slice that can potentially make learning faster
+    data_range = slice(100),
+    core_constraints: Set[str] = set(), #regexes
     timelag = 1,
     diff_trials = 30,
-    discretization_cutoff = 10,
+    discretization_cutoff = 5,
     outdir='exp'):
     # presumably the context was manually selected to be true?
     # think about/add this later
-    self.agent  = agent
     self.game_name = game_name
     self.seed = seed
-    self.interventions : Dict[str, List[Any]] = OrderedDict()
-    self.outcome_state = trace[-1]
-    self.trace = trace[:-1]
-    self.timelag = -1 * abs(timelag)
+    self.modelmod = modelmod
+
+    self.outcome_var = outcome_var
+    self.counterfactual = counterfactual
+
+    self.trace = Trace(game_name, modelmod, seed, trace)
+    self.agent = agent
+
+    self.derived_vars = derived_vars
+    self.core_constraints = core_constraints
+    self.compute_distributions(sample_data_dir, data_range)
+
+    self.timelag = -1 * max(abs(timelag), outcome_var.minwindow)
     self.diff_trials = diff_trials
     self.discretization_cutoff = discretization_cutoff
-    self.mutation_points = set(Experiment.generate_mutation_points(self.trace[0][0]))
-    self.outcome_var = outcome_var
     self.outdir = outdir
+
+    self.mutation_points = self.generate_mutation_points()
+    self.interventions : Dict[Var, List[Any]] = OrderedDict()
     os.makedirs(outdir, exist_ok=True)
 
-  def get_intervention_state(self):
-    return self.trace[self.timelag][0]
+  def compute_distributions(self, sample_data_dir, data_range):
+    data = []
+    if not sample_data_dir: 
+      print('Using already-learned distributions in ', self.modelmod)
+      return 
+    else:
+      print('Learning distributions and saving in', self.modelmod.replace('.', os.sep))
+      name = self.agent.__class__.__name__
+      game = get_state_object(self.game_name)
+      intervener = get_intervener(self.game_name)
+      with Toybox(self.game_name) as tb:
+        print('Loading data from', sample_data_dir)
+        print('Creating module', self.modelmod)
+        for seed in sorted(os.listdir(sample_data_dir)):
+          if seed.startswith('.'): continue
+          trial = sample_data_dir + os.sep + seed
+          for f in sorted(os.listdir(trial))[data_range]:
+            if f.endswith('json'):
+              with open(trial + os.sep + f, 'r') as state:
+                state = game.decode(intervener(tb), json.load(state), game)
+              data.append(state) 
 
-  def generate_mutation_points(g: BaseMixin, prefix='') -> List[str]:
-    """Returns a flat list of all possible mutation points."""
-    points : List[str] = []
-    for k, v in vars(g).items():
-      if k not in g.eq_keys: continue
-      here = k if prefix == '' else '{0}.{1}'.format(prefix, k)
-  
-      if isinstance(v, Collection):
-        for i, item in enumerate(v.coll):
-          this_item = '{0}[{1}]'.format(here, i)
-          if isinstance(item, BaseMixin):
-            points.extend(Experiment.generate_mutation_points(item, prefix=this_item))
-          else: points.append(this_item)
-  
-      elif isinstance(v, BaseMixin):
-        points.extend(Experiment.generate_mutation_points(v, prefix=here))
-  
-      elif k in g.immutable_fields: continue
-  
-      else: points.append(here)
-  
-    return points
+        # compute distributions for core variables
+        with intervener(tb, modelmod=self.modelmod, data=data): pass
+    
+    for var in self.derived_vars:
+      var.make_models(self.modelmod, data)
 
-  def generate_intervention(self) -> Tuple[Game, str, Any]:
+
+  def get_intervention_state(self, tb: Toybox):
+    return self.trace.get_intervention_state(tb, self.timelag)
+
+  def generate_mutation_points(self) -> Set[Var]:
+    # Doing it this way to get contravariance working for retval
+    # If I set:
+    # retval : Set[Var] = self.derived_vars
+    # then mypy appears to immediately refine retval to Set[Derived]
+    retval : List[Var] = []
+    retval.extend(self.derived_vars)
+    retval.extend(get_core_vars(self.trace.outcome_state, 
+      modelmod=self.modelmod, 
+      exclude=self.core_constraints,
+      derived=self.derived_vars))
+    assert len(retval), 'Must have more than zero mutation points to run an experiment!'
+    return set(retval)
+
+  def generate_intervention(self, tb: Toybox) -> Tuple[Game, Var, Any]:
     assert self.timelag < 0
-    intervention_state : Game = self.trace[self.timelag][0]
+    intervention_state : Game = self.get_intervention_state(tb)
 
-    for prop, tried in self.interventions.items():
-      before = get_property(intervention_state, prop)
-      intervened_state = intervention_state.sample(prop)
-      new_intervention = get_property(intervened_state, prop)
+    for var, tried in self.interventions.items():
+      before, intervened_state, after = var.sample(intervention_state)
 
-      if type(new_intervention) is float:
-        if all([math.isclose(new_intervention, val) for val in tried]):
+      if type(after) is float:
+        if all([math.isclose(after, val) for val in tried]):
           continue
-        elif new_intervention < min(tried) or new_intervention > max(tried):
+        elif after < min(tried) or after > max(tried):
           # allow samples from the tails
-          # print('Setting {} to {} from {}'.format(prop, new_intervention, before))
-          self.interventions[prop].append(new_intervention)
-          return (intervened_state, prop, new_intervention)
+          print('Setting {} to {} from {}'.format(var, after, before))
+          self.interventions[var].append(after)
+          return (intervened_state, var, after)
         elif len(tried) > self.discretization_cutoff:
           # h = (3.49 * sample_var) / (cube root n)
           n = len(tried)
@@ -133,7 +213,7 @@ class Experiment(object):
           while low < max(tried):
             # goal is to find out whether we are in the appropriate bin
             # and whether there is already a sample in that bin.
-            if new_intervention >= low and new_intervention <= high:
+            if after >= low and after <= high:
               elts = [v for v in tried if v >= low and v <= high]
               # print('{} values in bin [{}, {}]'.format(len(elts), low, high))
               # if len(elts):
@@ -141,148 +221,129 @@ class Experiment(object):
               #   break
               # else:
               if len(elts) == 0:
-                # print('\tSetting {} to {} from {}'.format(prop, new_intervention, before))
-                self.interventions[prop].append(new_intervention)
-                return (intervened_state, prop, new_intervention)
+                print('Setting {} to {} from {}'.format(var, after, before))
+                self.interventions[var].append(after)
+                return (intervened_state, var, after)
             low = high
             high = high + h
               
-      elif new_intervention not in tried and new_intervention != before:
-        self.interventions[prop].append(new_intervention)
-        # print('Setting {} to {} from {}'.format(prop, new_intervention, before))
-        return (intervened_state, prop, new_intervention)
+      elif after not in tried and after != before:
+        self.interventions[var].append(after)
+        print('Setting {} to {} from {}'.format(var, after, before))
+        return (intervened_state, var, after)
     
     # Select a new mutation point
-    prop = sample(list(self.mutation_points.difference(set(self.interventions.keys()))))
-    before = get_property(intervention_state, prop)
-    after = before
+    prop : Var = sample(list(self.mutation_points.difference(set(self.interventions.keys()))))
     counter = self.diff_trials
     
-    while before == after and counter > 0:
-      state = intervention_state.sample(prop)
-      after = get_property(state, prop)
-      if before != after: break
+    while counter > 0:
+      before, state, after = prop.sample(intervention_state)
+      if before != after: 
+        print('Setting {} to {} from {}'.format(prop, after, before))
+        if prop in self.interventions:
+          self.interventions[prop].append(after)
+        else:
+          self.interventions[prop] = [after]
+        return state, prop, after
       counter -= 1
-
-    if before == after: raise LikelyConstantError(prop, after, self.diff_trials)
-
-    # print('Setting {} to {} from {}'.format(prop, after, before))
     
-    if prop in self.interventions:
-      self.interventions[prop].append(after)
-    else:
-      self.interventions[prop] = [after]
-    return state, prop, after
+    raise LikelyConstantError(prop, after, self.diff_trials)
 
-  def forward_simulate(self, state: Game, action: Union[Input, int]) -> Game:
-    # takes one step
-    tb = state.intervention.toybox
-    if type(action) is int:
-      tb.apply_ale_action(action)
-    elif isinstance(action, Input):
-      tb.apply_action(action)
-    else: assert False
-    return state.__class__.decode(tb.state_to_json())    
 
-  def check_unconditional(self, prop, s1: Game, s1_: Game, s2: Game, s2_: Game):    
-    diff1: SetEq = s1 == s1_
-    diff2: SetEq = s2 == s2_
+  # def check_unconditional(self, prop, s1: Game, s1_: Game, s2: Game, s2_: Game):    
+  #   diff1: SetEq = s1 == s1_
+  #   diff2: SetEq = s2 == s2_
 
-    #print('check_unconditional: ', diff1, diff2)
+  #   #print('check_unconditional: ', diff1, diff2)
 
-    if len(diff2) < len(diff1): 
-      print('diff1:', diff1, '\tdiff2:', diff2)
-      raise MalformedInterventionError(prop, diff1.difference(diff2))
+  #   if len(diff2) < len(diff1): 
+  #     print('Malformed Intervention\ndiff1:', diff1, '\tdiff2:', diff2)
+  #     raise MalformedInterventionError(prop, diff1.difference(diff2))
     
-    elif len(diff2) > len(diff1):
-      print('diff1:', diff1, '\tdiff2:', diff2)
-      raise ConditionalIntervention(prop, diff2.difference(diff1))   
+  #   elif len(diff2) > len(diff1):
+  #     print('Conditional Intervention\ndiff1:', diff1, '\tdiff2:', diff2)
+  #     raise ConditionalIntervention(prop, diff1.differs, diff2.difference(diff1))   
 
-    return diff1, diff2
+  #   return diff1, diff2
+
+
+  def run_control(self, game, intervention, prop, after, control_state) -> List[Game]:
+
+    d = self.outdir + os.sep + 'control' + os.sep + str(prop) + os.sep + str(after)
+    os.makedirs(d, exist_ok=True)
+    f = d + os.sep + self.agent.__class__.__name__
+    states = []
+
+    with Toybox(self.game_name, seed=self.seed, withstate=control_state.encode()) as tb:
+      with open(f + '00001.json', 'w') as js:
+        json.dump(tb.state_to_json(), js)
+      tb.save_frame_image(f + '00001.png')
+
+      for i, action in enumerate(self.agent.actions, start=2):
+        with open(f + str(i).zfill(5) + '.json' , 'w') as js:
+          json.dump(tb.state_to_json(), js)
+        tb.save_frame_image(f + str(i).zfill(5) + '.png')
+        tb.apply_action(action)
+        states.append(game.decode(intervention, tb.state_to_json(), game))
+    return states
 
 
   def run(self):
 
-    original_outcome = self.outcome_var.outcomep(self.trace + [self.outcome_state])
+    original_outcome = self.outcome_var.outcomep(self.trace.full)
 
     while abs(self.timelag) < len(self.trace):
       print('\n\nLag between intervention and measured outcome: ', abs(self.timelag))    
-      # For each time slice, randomly sample from the set of mutation points.
-      # While the list of tried mutation points is less than the list of
-      # possible mutation points...
+
       while len(self.interventions) < len(self.mutation_points):
         mutations_attempted = sum([len(tried) for tried in self.interventions.values()])
-        if len(self.interventions) and ((mutations_attempted % 250) == 0):
-          # print('\n\tInterventions attempted:\n\t=======================\n\tVariable\tCount\n\t----------------------' + \
-          #   ''.join(['\n\t{}:\t{}'.format(k, len(v)) for k, v in self.interventions.items()]))
-          # print('\t---------------------')
+        if len(self.interventions) and ((mutations_attempted % 100) == 0):
           print('{} possible mutation points; {} interventions attempted so far'.format(len(self.mutation_points), mutations_attempted))
           print(tabulate([(var, len(items)) for (var, items) in self.interventions.items()], 
             headers=['Property', 'Count']))
-        t = self.timelag
+
+        t = abs(self.timelag)
         sapairs: List[Tuple[Game, str]] = [] # the window
+
         game         = get_state_object(self.game_name)
-        intervention = get_intervener(self.game_name)(self.agent.toybox, 'breakout', eq_mode=SetEq)
-        s1 = game.decode(intervention, self.get_intervention_state().encode(), game)
+        intervention = get_intervener(self.game_name)(self.agent.toybox, self.game_name, eq_mode=SetEq)
+
+        s1           = game.decode(intervention, self.get_intervention_state(intervention.toybox).encode(), game)
 
         try:
-          s1_, prop, _ = self.generate_intervention()
+          s1_, prop, after = self.generate_intervention(intervention.toybox)
+          intervention_dir = self.outdir + os.sep + 'intervened' + os.sep + str(prop) + os.sep + str(after)
+          self.agent.reset()  
           self.agent.toybox.write_state_json(s1_.encode())
+          self.agent.play(intervention_dir, t, save_states=True, startstate=s1_)
+          assert self.agent.states, (self.agent.toybox.game_over(), t, prop)
+          assert self.agent.actions
+          # print(len(self.agent.states), len(self.agent.actions))
+          sapairs.extend(zip(self.agent.states, self.agent.actions))
+          assert len(sapairs) >= self.outcome_var.minwindow, len(sapairs)
+          # generate control
+          control_states = self.run_control(game, intervention, prop, after, s1)
+          intervened_outcome = self.counterfactual.outcomep(sapairs)
+
+          # s2_ = game.decode(intervention,  self.agent.states[-1].encode(), game)
+          if intervened_outcome:
+            print('Original and intervened outcome differ for outcome {}={}!'.format(prop, get_property(sapairs[-1][0], prop)))
+            print('ball y control:\n' + '\t'.join([str(s.balls[0].position.y) for s in control_states]))
+            print('ball y interve:\n' + '\t'.join([str(s[0].balls[0].position.y) for s in sapairs]))
+            return s1_, intervened_outcome
+          
+
         except LikelyConstantError as e:
           print('\t' + str(e))
           print('\tRemoving {} from mutation list'.format(e.prop))
           self.mutation_points.remove(e.prop)
           if e.prop in self.interventions: self.interventions.remove(e.prop)
-          continue
 
-        # print("\tLooping from t={} to 0 for {}".format(t, self.agent.__class__.__name__))
-        self.agent.reset()
-
-        while t < 0:
-          self.agent.play(self.outdir + os.sep + 'intervened' + os.sep + prop, 1, save_states=True)
-          s2_ = game.decode(intervention,  self.agent.toybox.state_to_json(), game)
-          with Toybox(self.game_name, seed=self.seed, withstate=s1.encode()) as tb:
-            for i, action in enumerate(self.agent.actions):
-              #if self.trace[len(self.trace) - (len(self.agent.actions))]
-              # print('\t\tMirroring action', action_to_string(action))
-              tb.apply_action(action)
-            s2 = game.decode(intervention, tb.state_to_json(), game)
-          #print('\t\tCheck mutated property', get_property(s2, prop), get_property(s2_, prop))
-          try:
-            same1, same2 = self.check_unconditional(prop, s1, s1_, s2, s2_)
-          except MalformedInterventionError as e:
-            print('\t\t'+str(e))
-            print('\t\tRemoving {} from mutation list'.format(e.diff))
-            for m in e.diff:
-              if m[0] in self.mutation_points:
-                self.mutation_points.remove(m[0])
-              if m[0] in self.interventions:
-                del self.interventions[m[0]]
-            continue
-          except ConditionalIntervention as e:
-            print('\t\t'+str(e))
-            print('\t\tRemoving {} from mutation list'.format(e.diff))
-            for m in e.diff:
-              if m[0] in self.interventions:
-                del self.interventions[m[0]]
-              if m[0] in self.mutation_points:
-                self.mutation_points.remove(m[0])
-            continue
-          sapairs.append((s2_, self.agent.actions[-1]))
-          t += 1
-        # print('\tNumber of state-action pairs', len(sapairs))
-        try:
-          intervened_outcome = self.outcome_var.outcomep(sapairs)
-          if intervened_outcome != original_outcome:
-            print('Original and intervened outcome differ!')
-            return s1_, intervened_outcome
-          # print('Intervention had no effect on outcome')
-        except InadequateWindowError as e:
-          print(e)
-          print('Resetting timelag to minimum window of {}'.format(e.expecting))
-          self.timelag = -1 * e.expecting
-          continue
 
       self.timelag = max(-1 * len(self.trace), self.timelag * 2)
       print('Doubling lookback to {}\n'.format(self.timelag))
-      self.mutation_points = set(Experiment.generate_mutation_points(self.trace[0][0]))
+      self.interventions = OrderedDict()
+      self.mutation_points = self.generate_mutation_points()
+
+    print('No counterfactual-inducing intervention found')
+    return None, None
