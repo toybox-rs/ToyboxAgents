@@ -2,7 +2,9 @@ source .env/bin/activate
 pip install -r REQUIREMENTS.txt
 
 if [ "$1" = "local" ]; then 
-  training_data=`ls -d analysis/data/raw/Target/*`
+  if [ "$2" = "learn" ]; then
+    training_data=`ls -d analysis/data/raw/Target/*`
+  fi
   python -m autoexp \
     breakout \
     --model models.breakout.target  \
@@ -15,8 +17,10 @@ if [ "$1" = "local" ]; then
     --outdir exp/Target/MissedBall \
     --datadir $training_data
     > exp_Target_MissedBall.sh
-elif [ "$1" == "swarm" ]; then
-  training_data=`ls -d $WORK1/ToyboxAgents/Target/*`
+elif [ "$1" = "swarm" ]; then
+  if [ "$2" = "learn" ]; then 
+    training_data=`ls -d $WORK1/ToyboxAgents/Target/*`
+  fi
   python -m autoexp \
     breakout \
     --model models.breakout.target  \
