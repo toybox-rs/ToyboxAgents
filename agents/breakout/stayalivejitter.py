@@ -1,7 +1,7 @@
 from . import *
 from random import random, seed, randint
 
-class StayAliveJitter(Agent):
+class StayAliveJitter(BreakoutAgent):
     """Reacts to the x position, with some random chance of not moving."""
 
     def __init__(self, toybox: Toybox):
@@ -9,11 +9,6 @@ class StayAliveJitter(Agent):
         self.prev_ballx = None
         super().__init__(toybox)
         seed(self.seed)
-
-        # Need to get a ball
-        input = Input()
-        input.button1 = True
-        self.toybox.apply_action(input)
 
     def get_action(self, intervention=None):
         input = Input()

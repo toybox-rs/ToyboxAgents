@@ -1,9 +1,40 @@
 # Outcomes may not be valid at every timestep.
 # Outcomes must be binary
 from toybox.interventions.breakout import Breakout
-from typing import List, Tuple
+from toybox.envs.atari.base import ACTION_MEANING
+from typing import List, Tuple, Optional
 
-from .base import *
+from . import *
+from agents.base import action_to_string
+
+def direction(pairs) -> Optional[int]:
+    """Returns the direction the ball is travelling in.
+
+    Semantics of return values:
+    - None: The ball changed direction in this window
+    - 0: The ball did not move in the window
+    - +1: The ball moved to the right
+    - -1: The ball moved to the left
+    """
+    ball_dir = 0
+
+    for i, (s1, _) in enumerate(pairs[:-1]):
+      s2 = pairs[i+1][0]
+
+      if len(s1.balls) and len(s2.balls):
+        diff = s2.balls[0].position.x - s1.balls[0].position.x  
+        if ball_dir == 0: 
+          ball_dir = sign(diff)
+          continue  
+        if diff == 0: continue  
+        if (ball_dir > 0 and diff < 0) or (ball_dir < 0 and diff > 0):
+          # ball changed direction
+          return None
+        
+        ball_dir = sign(diff)
+    
+    return ball_dir
+
 
 class ActionTaken(Outcome):
 
@@ -28,8 +59,16 @@ class MissedBall(Outcome):
         # at tn-1, then we have missed
         last_state = pairs[-1][0]
         pen_state = pairs[-2][0]
-        return len(last_state.balls) == 0 and len(pen_state.balls) > 0
-
+        if last_state is None:
+            return True
+        elif len(last_state.balls) == 0:
+            return len(pen_state.balls) > 0
+        else:
+            pen_ball_y = pen_state.balls[0].position.y 
+            pen_pad_y  = pen_state.paddle.position.y
+            last_ball_y = last_state.balls[0].position.y 
+            last_pad_y = last_state.paddle.position.y
+            return  pen_ball_y > pen_pad_y and last_ball_y > last_pad_y
 
 class HitBall(Outcome):
 
@@ -72,6 +111,35 @@ class HitBall(Outcome):
             raise ValueError('No change in ball y position for {} consecutive states'.format(len(pairs)))
         return heading_down is False 
 
+class MoveSame(Outcome):
+
+    def __init__(self):
+        super().__init__(2)
+
+    def outcomep(self, pairs):
+        InadequateWindowError.check_window(pairs, self.minwindow, MoveSame)
+
+        prevs = [p[0] for p in pairs[:-1]]
+        states = [p[0] for p in pairs[1:]]
+        actions = [p[1] for p in pairs[1:]]    
+        ball_dir = direction(pairs)
+        same_dir = 0   
+
+        # Either the window is too big, or the paddle and ball 
+        # made contact; either way, this is not an appropriate 
+        # outcome for that context.
+        if ball_dir is None or ball_dir == 0: return False
+    
+        for s1, s2, a in zip(prevs, states, actions):
+          a = action_to_string(a)
+          if len(s1.balls) and len(s2.balls):
+            if ball_dir > 0: # ball is moving right
+              if a.upper().strip() == 'RIGHT': same_dir += 1
+            elif ball_dir < 0:
+              if a.upper().strip() == 'LEFT': same_dir += 1  
+        return same_dir > (len(pairs) / 2.)
+
+
 
 class MoveOpposite(Outcome):
     # cases where the ball is traveling in one direction, 
@@ -81,26 +149,7 @@ class MoveOpposite(Outcome):
   def __init__(self):
     super().__init__(2)
 
-  def direction(self, pairs):
-    ball_dir = 0
-
-    for i, (s1, _) in enumerate(pairs[:-1]):
-      s2 = pairs[i+1][0]
-
-      if len(s1.balls) and len(s2.balls):
-        diff = s2.balls[0].position.x - s1.balls[0].position.x  
-        if ball_dir == 0: 
-          ball_dir = sign(diff)
-          continue  
-        if diff == 0: continue  
-        if (ball_dir > 0 and diff < 0) or (ball_dir < 0 and diff > 0):
-          # ball changed direction
-          return None
-        
-        ball_dir = sign(diff)
-    
-    return ball_dir
-
+  
 
   def outcomep(self, pairs):
     # ball must be moving in the same direction for the whole window
@@ -111,12 +160,13 @@ class MoveOpposite(Outcome):
     prevs = [p[0] for p in pairs[:-1]]
     states = [p[0] for p in pairs[1:]]
     actions = [p[1] for p in pairs[1:]]    
-    ball_dir = self.direction(pairs)
+    ball_dir = direction(pairs)
     against_dir = 0    
     
     if ball_dir is None or ball_dir == 0: return False
     
     for s1, s2, a in zip(prevs, states, actions):
+      a = action_to_string(a)
       if len(s1.balls) and len(s2.balls):
         if ball_dir > 0: # ball is moving right
           if a.upper().strip() == 'LEFT': against_dir += 1
@@ -152,12 +202,40 @@ class MoveAway(Outcome):
     return away_dir > (len(pairs) / 2.)
 
 
+class MoveToward(Outcome):
+
+    def __init__(self):
+        super().__init__(2)
+
+    def outcomep(self, pairs):
+        InadequateWindowError.check_window(pairs, self.minwindow, MoveToward)
+
+        tow_dir = 0  
+
+        for i, (s1, a) in enumerate(pairs[:-1]):
+          s2 = pairs[i+1][0]
+
+          if len(s1.balls) and len(s2.balls):
+            diff1 = abs(s1.balls[0].position.x - s1.paddle.position.x)
+            diff2 = abs(s2.balls[0].position.x - s2.paddle.position.x)
+            diff = diff2 - diff1
+            moving = s1.paddle.position.x - s2.paddle.position.x
+
+            if diff < 0 and moving:
+              tow_dir += 1
+
+        return tow_dir > (len(pairs) / 2.)
+
+
 class Aim(Outcome):
     """An agent is aiming if the region of interest of the paddle remains within some epsilon of the ball's x position."""
 
     def __init__(self, location):
         super().__init__(2)
         self.location = location
+
+    def __str__(self):
+        return self.__class__.__name__ + self.location.capitalize()
 
     def compute_center(self, state):
         if self.location == 'up':

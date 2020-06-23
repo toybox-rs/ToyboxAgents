@@ -1,9 +1,24 @@
+"""Entry point for running a single agent explanation search.
+
+For information, use with argument --help.
+"""
+
 import argparse
+import importlib
 import os
 
-from ctoybox import Input, Toybox
-from . import learn_models
+from typing import Optional, List, Tuple
 
+
+from ctoybox import Input, Toybox
+from toybox.interventions import Game
+
+
+import autoexp.outcomes as outcomes
+import agents
+
+from autoexp import learn_models, load_states, find_outcome_window
+from autoexp.driver import Experiment
 
 parser = argparse.ArgumentParser(description='Search for explanations')
 
@@ -22,29 +37,139 @@ parser.add_argument('--agent',
 parser.add_argument('--seed', 
   default=642020,
   type=int)
-parser.add_argument('--max_steps',
+parser.add_argument('--maxsteps',
   default=2000,
+  type=int,
   help='For generating on-policy states and identifying outcomes.')
 parser.add_argument('--window',
-  default=32,
+  default=64,
+  type=int,
   help='The maximum window before the outcome that we should consider for intervention.')
 parser.add_argument('--outcome',
   required=True,
   nargs='+',
-  help='The outcome class')
+  help='The outcome class.')
+parser.add_argument('--counterfactual',
+  required=True,
+  nargs='+',
+  help='The counterfactual class.')
+parser.add_argument('--outcome_dir',
+  required=False,
+  type=str,
+  help='The directory that contains the state json sequence for explaining an outcome')
+parser.add_argument('--vars', 
+  required=False,
+  nargs='+',
+  default=set(),
+  help='The composite attributes to include in experiments.')
+parser.add_argument('--constraints',
+  required=False,
+  default=set(),
+  nargs='+',
+  help='The constraints we want to apply to the atomic attributes.')
+parser.add_argument('--record_json',
+  default=False,
+  action='store_true'
+)
+parser.add_argument('--outdir',
+  required=True,
+  help='Where to store the logged experiment data.'
+)
 
 args = parser.parse_args()
-start = Input()
-start.button1 = True
-
 
 modelmod = args.model.replace(os.sep, '.')
-outcome = eval(args.outcome[0])(*args.outcome[1:])
-agent = eval(args.agent[0])(Toybox(args.game, seed=args.seed), *args.agent[1:])
+
+importlib.import_module('autoexp.outcomes.' + args.game)
+outcome = eval('outcomes.' + args.game + '.' + args.outcome[0])(*args.outcome[1:])
+counterfactual = eval('outcomes.' + args.game + '.' + args.counterfactual[0])(*args.counterfactual[1:])
+
+agent_mod = '.'.join(['agents', args.game, args.agent[0].lower()])
+importlib.import_module(agent_mod)
+agent = eval(agent_mod + '.' + args.agent[0])(Toybox(args.game, seed=args.seed), *args.agent[1:])
 
 
 if args.datadir: 
-  print('Learning models for {} on {}'.format(args.agent, args.game))
-  # ignore the states returned
-  learn_models(args.datadir, args.modelmod, args.game)
+  print('Learning models for {} on {} from {}'.format(str(agent), args.game, *args.datadir))
+  training_states = []
+  for d in args.datadir:
+    training_states.extend(load_states(d, args.game))
+  learn_models(training_states, args.model, args.game)
 
+
+trace: Optional[List[Tuple[Game, str]]] = None
+
+if args.outcome_dir:
+  # load up the outcome data 
+  print('Loading {} trace for {} from {}'.format(outcome.__name__, agent.__name__, args.outcome_dir))
+  trace = load_states(args.outcome_dir, args.game)
+else:
+  # search for the outcome under normal gameplay
+  tb = agent.toybox
+  tb.new_game()
+  agent.reset(args.seed)
+  
+  found_o, found_c = False, False
+  
+  agent.play(maxsteps=args.window, write_json_to_file=args.record_json, save_states=True)
+  
+  step = len(agent.states)
+
+  while (not tb.game_over() and step < args.maxsteps) and (not agent.done if hasattr(agent, 'done') else True):
+    action_window = agent.actions[-1 * args.window:]
+    state_window = agent.states[-1 * args.window:]
+    states = list(zip(state_window, action_window))
+    outcome_sapairs = find_outcome_window(outcome, states, args.window)
+    counterfactual_sapairs = find_outcome_window(counterfactual, states, args.window)
+    
+    if outcome_sapairs and not found_o: 
+      print('Found outcome {} for {} during window [{}, {}]!'.format(
+        outcome.__class__.__name__, 
+        agent.__class__.__name__, 
+        max(step - args.window, 0), 
+        step))
+      Toybox(args.game, withstate=outcome_sapairs[0][0].encode()).save_frame_image('outcome_{}_{}_begin.png'.format(str(outcome), str(agent)))
+      Toybox(args.game, withstate=outcome_sapairs[-1][0].encode()).save_frame_image('outcome_{}_{}_end.png'.format(str(outcome), str(agent)))
+      found_o = True
+      trace = outcome_sapairs
+      if found_c: break
+
+    if counterfactual_sapairs and not found_c: 
+      print('Found counterfactual {} for {} during window [{}, {}]!'.format(
+        counterfactual.__class__.__name__, 
+        agent.__class__.__name__, 
+        max(step - args.window, 0), 
+        step))
+      Toybox(args.game, withstate=counterfactual_sapairs[0][0].encode()).save_frame_image('counterfactual_{}_{}_begin.png'.format(str(counterfactual), str(agent)))
+      Toybox(args.game, withstate=counterfactual_sapairs[-1][0].encode()).save_frame_image('counterfactual_{}_{}_end.png'.format(str(counterfactual), str(agent)))
+      found_c = True
+      if found_o: break
+
+    # advance by one step until we find the outcome and counterfactual
+    agent.step('/dev/null', False, True)
+    step += agent.action_repeat
+
+  if not found_o: 
+    print('Ran {} for {} steps; did not find outcome {}'.format(str(agent), step, outcome))
+    exit(0)
+  if not found_c:
+    print('Ran {} for {} steps; did not find counterfactual {}'.format(str(agent), step, str(counterfactual)))
+    exit(0)
+
+# Now run the experiment
+agent.reset(seed=args.seed)
+exp = Experiment(
+  game_name=args.game,
+  seed=args.seed,
+  modelmod=args.model,
+  outcome_var=outcome,
+  counterfactual=counterfactual,
+  core_constraints=set(args.constraints),
+  derived_vars=set([eval(v)() for v in args.vars]),
+  trace=trace,
+  agent=agent, 
+  outdir=args.outdir
+)
+intervened_state, intervened_outcome = exp.run()
+print(intervened_state)
+print(intervened_outcome)

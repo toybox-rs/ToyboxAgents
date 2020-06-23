@@ -51,10 +51,10 @@ def get_core_vars(g: BaseMixin, modelmod, exclude: Set[str] = set(), derived: Se
   all_points : List[str] = get_core_attributes(g)
   assert len(all_points)
   # first filter out the attributes that contribute to the derived vars
-  for d in derived: 
-    for c in d.corevars:
-      if c in all_points:
-        all_points.remove(c)
+  # for d in derived: 
+  #   for c in d.corevars:
+  #     if c in all_points:
+  #       all_points.remove(c)
   # now filter out anything we explicitly exclude
   retval = []
   for thing in all_points:

@@ -13,7 +13,7 @@ from toybox.interventions.core import Game, get_property, parse_property_access
 from toybox.interventions.base import BaseMixin, Collection, SetEq
 
 
-from .outcomes.base import Outcome, InadequateWindowError
+from .outcomes import Outcome, InadequateWindowError
 from .vars import Var
 from .vars.derived import Derived
 from .vars.core import get_core_vars
@@ -110,7 +110,7 @@ class Experiment(object):
     # For learning marginals
     sample_data_dir = '',
     # An input slice that can potentially make learning faster
-    data_range = slice(100),
+    data_range = slice(2000),
     core_constraints: Set[str] = set(), #regexes
     timelag = 1,
     diff_trials = 30,
@@ -132,7 +132,7 @@ class Experiment(object):
     self.core_constraints = core_constraints
     self.compute_distributions(sample_data_dir, data_range)
 
-    self.timelag = -1 * max(abs(timelag), outcome_var.minwindow)
+    self.timelag = -1 * max(abs(timelag), (outcome_var.minwindow + 1) * agent.action_repeat)
     self.diff_trials = diff_trials
     self.discretization_cutoff = discretization_cutoff
     self.outdir = outdir
@@ -144,7 +144,13 @@ class Experiment(object):
   def compute_distributions(self, sample_data_dir, data_range):
     data = []
     if not sample_data_dir: 
-      print('Using already-learned distributions in ', self.modelmod)
+      try:
+        import importlib
+        importlib.import_module(self.modelmod)
+        print('Using already-learned distributions in ', self.modelmod)
+      except Exception as e: 
+        print(e)
+        print('Model module is either not accessible or path is wrong.')
       return 
     else:
       print('Learning distributions and saving in', self.modelmod.replace('.', os.sep))
@@ -283,7 +289,14 @@ class Experiment(object):
         with open(f + str(i).zfill(5) + '.json' , 'w') as js:
           json.dump(tb.state_to_json(), js)
         tb.save_frame_image(f + str(i).zfill(5) + '.png')
-        tb.apply_action(action)
+        if isinstance(action, Input):
+          tb.apply_action(action)
+        elif type(action) == int:
+          tb.apply_ale_action(action)
+        elif action is None:
+          pass
+        else:
+          raise ValueError('Unknown action type:', type(action))
         states.append(game.decode(intervention, tb.state_to_json(), game))
     return states
 
@@ -293,7 +306,7 @@ class Experiment(object):
     original_outcome = self.outcome_var.outcomep(self.trace.full)
 
     while abs(self.timelag) < len(self.trace):
-      print('\n\nLag between intervention and measured outcome: ', abs(self.timelag))    
+      print('\nLag between intervention and measured outcome: ', abs(self.timelag))    
 
       while len(self.interventions) < len(self.mutation_points):
         mutations_attempted = sum([len(tried) for tried in self.interventions.values()])
@@ -302,7 +315,7 @@ class Experiment(object):
           print(tabulate([(var, len(items)) for (var, items) in self.interventions.items()], 
             headers=['Property', 'Count']))
 
-        t = abs(self.timelag)
+        t = self.timelag
         sapairs: List[Tuple[Game, str]] = [] # the window
 
         game         = get_state_object(self.game_name)
@@ -315,8 +328,8 @@ class Experiment(object):
           intervention_dir = self.outdir + os.sep + 'intervened' + os.sep + str(prop) + os.sep + str(after)
           self.agent.reset()  
           self.agent.toybox.write_state_json(s1_.encode())
-          self.agent.play(intervention_dir, t, save_states=True, startstate=s1_)
-          assert self.agent.states, (self.agent.toybox.game_over(), t, prop)
+          self.agent.play(intervention_dir, maxsteps=t, save_states=True, startstate=s1_)
+          assert self.agent.states, (self.agent.toybox.game_over(), t, prop, self.agent.done if hasattr(self.agent, 'done') else None)
           assert self.agent.actions
           # print(len(self.agent.states), len(self.agent.actions))
           sapairs.extend(zip(self.agent.states, self.agent.actions))
@@ -327,7 +340,7 @@ class Experiment(object):
 
           # s2_ = game.decode(intervention,  self.agent.states[-1].encode(), game)
           if intervened_outcome:
-            print('Original and intervened outcome differ for outcome {}={}!'.format(prop, get_property(sapairs[-1][0], prop)))
+            print('Original and intervened outcome differ for property', prop)
             print('ball y control:\n' + '\t'.join([str(s.balls[0].position.y) for s in control_states]))
             print('ball y interve:\n' + '\t'.join([str(s[0].balls[0].position.y) for s in sapairs]))
             return s1_, intervened_outcome
@@ -340,7 +353,7 @@ class Experiment(object):
           if e.prop in self.interventions: self.interventions.remove(e.prop)
 
 
-      self.timelag = max(-1 * len(self.trace), self.timelag * 2)
+      self.timelag = max(-1 * len(self.trace), self.timelag * 2) # will pick the less negative one
       print('Doubling lookback to {}\n'.format(self.timelag))
       self.interventions = OrderedDict()
       self.mutation_points = self.generate_mutation_points()

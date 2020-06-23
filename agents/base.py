@@ -64,22 +64,30 @@ def string_to_input(action: str) -> Input:
 
 class Agent(ABC):
 
-    def __init__(self, toybox: Toybox, seed = 1234):
+    def __init__(self, toybox: Toybox, seed = 1234, action_repeat=1):
         self.toybox = toybox
         self.name = self.__class__.__name__
-        self.frame_counter = 0
+        self._frame_counter = 0
+        self.action_repeat = action_repeat
         self.actions : List[Union[str, int]] = []
         self.states : List[Game] = []
         self._reset_seed(seed)
+
+    def __str__(self):
+        return self.__class__.__name__
 
     def _reset_seed(self, seed):
         self.seed = seed
         self.toybox.set_seed(seed)
         random.seed(seed)
 
+    def next_frame_id(self):
+        self._frame_counter += self.action_repeat
+        return self._frame_counter
+
     def _next_file(self, path):
-        self.frame_counter += 1
-        return path + os.sep + self.name + str(self.frame_counter).zfill(5)
+        fc = self.next_frame_id()
+        return path + os.sep + self.name + str(fc).zfill(5)
 
     def write_data(self, path: str, write_json_to_file, save_states):
         if write_json_to_file:
@@ -93,6 +101,7 @@ class Agent(ABC):
 
     def save_actions(self, path):
         os.makedirs(path, exist_ok=True)
+        if not path: return
         with open(path + os.sep + self.name + '.act', 'w') as f:
             for action in self.actions:
                 f.write(action_to_string(action)+'\n')
@@ -109,7 +118,7 @@ class Agent(ABC):
     def reset(self, seed=None):
         self.states = []
         self.actions = []
-        self.frame_counter = 0
+        self._frame_counter = 0
         if seed:
             self._reset_seed(seed)
 
@@ -118,19 +127,23 @@ class Agent(ABC):
         self.actions.append(action)
 
         if action is not None:
-            if isinstance(action, Input):
-                self.toybox.apply_action(action)
-            elif type(action) == int:
-                self.toybox.apply_ale_action(action)
-            else: assert False
+            for a in [action] * self.action_repeat:
+                if isinstance(a, Input):
+                    self.toybox.apply_action(a)
+                elif type(a) == int:
+                    self.toybox.apply_ale_action(a)
+                else: assert False
         
-        if write_json_to_file:
+        if write_json_to_file and path:
             self.write_data(path, write_json_to_file, save_states)
-        else: self.frame_counter += 1
+        else: self.next_frame_id()
 
         if save_states:
             self.states.append(state_from_toybox(self.toybox))
-            
+
+    
+    def stopping_condition(self, maxsteps, *args, **kwargs):
+        return self.toybox.game_over() or self._frame_counter > maxsteps 
 
 
     def play(self, path=None, maxsteps=2000, write_json_to_file=True, save_states=False, startstate=None):
@@ -142,8 +155,14 @@ class Agent(ABC):
         if startstate: self.toybox.write_state_json(startstate.encode())
         self.write_data(path, write_json_to_file, save_states)
 
-        while not self.toybox.game_over() and self.frame_counter <= maxsteps:
-            # print('STEP', self.frame_counter, maxsteps)
+        maxsteps = abs(maxsteps) 
+
+        while not self.stopping_condition(maxsteps):
+            # if self._frame_counter % 10 == 0: print('STEP', self._frame_counter, maxsteps)
             self.step(path, write_json_to_file, save_states)
+        
+        if self._frame_counter <= maxsteps:
+            self.actions.append(None)
+            if save_states: self.states.append(None)
  
         if path: self.save_actions(path)

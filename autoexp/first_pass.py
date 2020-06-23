@@ -74,13 +74,9 @@ from autoexp.outcomes.breakout import *
 
 exp_seed  = 5202020
 max_steps = 2000 # We don't want to wait forever!
-window    = -32   # So we can try out the backwards search
+window    = 64  # So we can try out the backwards search
 
 data : Dict[str, Dict[str, List[Game]]] = {}
-
-get_ball = Input()
-get_ball.button1 = True
-
 
 # %% [markdown]
 # Our next step is to instantiate the outcomes:
@@ -90,17 +86,19 @@ get_ball.button1 = True
 missed = MissedBall()
 hit = HitBall()
 oppo = MoveOpposite()
+move_same = MoveSame()
 away = MoveAway()
+toward = MoveToward()
 aim_right = Aim('right')
 aim_left = Aim('left')
 
 outcomes : Dict[str, Outcome] = {
-    # 'MissedBall'  : missed,
+    # 'MissedBall'  : (missed, hit),
     'HitBall'     : (hit, missed),
-    # 'MoveOpposite': oppo,
-    # 'MoveAway'    : away,
-    # 'AimRight'    : aim_right,
-    # 'AimLeft'     : aim_left
+    # 'MoveOpposite': (oppo, move_same),
+    # 'MoveAway'    : (away, toward),
+    # 'AimRight'    : (aim_right, aim_left),
+    # 'AimLeft'     : (aim_left, aim_right)
 }
 
 # %% [markdown]
@@ -117,9 +115,9 @@ from ctoybox import Toybox
 # We will need to feed the agent class and arguments for initialization
 # into the Experiment object later
 agents = [
-  StayAlive(Toybox('breakout', seed=exp_seed)),
-  # Target(Toybox('breakout', seed=exp_seed)),
-  # PPO2(Toybox('breakout', seed=exp_seed)),
+  Target(Toybox('breakout', seed=exp_seed)),
+  PPO2(Toybox('breakout', seed=exp_seed)),
+  # StayAlive(Toybox('breakout', seed=exp_seed)),
   # StayAliveJitter(Toybox('breakout', seed=exp_seed))
 ]
 
@@ -147,31 +145,31 @@ states : List[Game] = []
 model_root = 'models.breakout'
 
 
-for agent in agents[:0]:
-  name = agent.__class__.__name__
-  with Toybox('breakout') as tb:
-    root = os.path.sep.join(['analysis', 'data', 'raw', name])
-    print('Loading data from', root)
-    modelmod = model_root + '.' + name.lower()
-    print('Creating module', modelmod)
-    for seed in sorted(os.listdir(root)):
-      if seed.startswith('.'): continue
-      trial = root + os.sep + seed
-      for f in sorted(os.listdir(trial))[:500]:
-        if f.endswith('json'):
-          with open(trial + os.sep + f, 'r') as state:
-            state = Breakout.decode(BreakoutIntervention(tb), json.load(state), Breakout)
-            states.append(state) 
-      # We are only going to learn from 1 trial, since this 
-      # is a demonstration, and we don't want it to take too much time.
-      # Comment out this break to use all of the data
-      break
+# for agent in agents[:0]:
+#   name = agent.__class__.__name__
+#   with Toybox('breakout') as tb:
+#     root = os.path.sep.join(['analysis', 'data', 'raw', name])
+#     print('Loading data from', root)
+#     modelmod = model_root + '.' + name.lower()
+#     print('Creating module', modelmod)
+#     for seed in sorted(os.listdir(root)):
+#       if seed.startswith('.'): continue
+#       trial = root + os.sep + seed
+#       for f in sorted(os.listdir(trial))[:500]:
+#         if f.endswith('json'):
+#           with open(trial + os.sep + f, 'r') as state:
+#             state = Breakout.decode(BreakoutIntervention(tb), json.load(state), Breakout)
+#             states.append(state) 
+#       # We are only going to learn from 1 trial, since this 
+#       # is a demonstration, and we don't want it to take too much time.
+#       # Comment out this break to use all of the data
+#       break
 
     
-    intervener = get_intervener('breakout')
-    with intervener(tb, modelmod=modelmod, data=states): pass
-  # We need to clean up for any agents that use tensorflow
-  del(agent)
+#     intervener = get_intervener('breakout')
+#     with intervener(tb, modelmod=modelmod, data=states): pass
+#   # We need to clean up for any agents that use tensorflow
+#   del(agent)
 
 
 # %% [markdown]
@@ -191,6 +189,7 @@ logging.basicConfig(level=logging.CRITICAL)
 # %% 
 
 from toybox.interventions.breakout import BreakoutIntervention
+from utils import find_outcome_window
 
 for agentname, agent in [(a.__class__.__name__, a) for a in agents]:
   data[agentname] = {}
@@ -203,33 +202,41 @@ for agentname, agent in [(a.__class__.__name__, a) for a in agents]:
     tb.new_game()
     agent.reset(exp_seed)
 
-    # Need to get the ball (i.e., start the game)
-    tb.apply_action(get_ball)  
-
-    found = False
+    found_o = False
+    found_c = False
 
     # first play the agent for the requisite number of steps
-    agent.play(maxsteps=abs(window), write_json_to_file=False, save_states=True)
+    agent.play(maxsteps=window, write_json_to_file=False, save_states=True)
     step = len(agent.states)
+    print(agent.__class__.__name__, agent.action_repeat, step)
 
-    while (not tb.game_over()) and (step < max_steps):
+    while (not tb.game_over()) and (step < max_steps) and (not agent.done if hasattr(agent, 'done') else True):
       # Test to see if we have observed the outcome yet
-      action_window = agent.actions[window:]
-      state_window = agent.states[window:]
-      sapairs = list(zip(state_window, action_window))
+      get_data = lambda o: find_outcome_window(outcome, list(zip(agent.states, agent.actions)), window)
+      outcome_sapairs = get_data(outcome)
+      counterfactual_sapairs = get_data(counterfactual)
 
-      if outcome.outcomep(sapairs):
-        data[agentname][oname] = sapairs
-        print('Found positive instance of {} for {} during window [{}, {}]!'.format(oname, agentname, step + window, step))
-        found = True
-        break
+      if outcome_sapairs and not found_o:
+        data[agentname][oname] = outcome_sapairs
+        print('Found outcome {} for {} during window [{}, {}]!'.format(oname, agentname, max(step - window, 0), step))
+        found_o = True
+        if found_c: break
+
+      if counterfactual_sapairs and not found_c:
+        print('Found counterfactual {} for {} during window [{}, {}]!'.format(counterfactual.__class__.__name__, agentname, max(step - window, 0), step))
+        found_c = True
+        if found_o: break
 
       # If we didn't break, take one step
       # This more or less copies the play method of the base agent
       # reproduced here to bring the agent up to speed.
       agent.step('/dev/null', False, True)
-      step += 1
-    if not found: print('Ran {} for {} steps; did not find outcome {}'.format(agent.__class__.__name__, step, oname))
+      step += agent.action_repeat
+    if not found_o: 
+      print('Ran {} for {} steps; did not find outcome {}'.format(agent.__class__.__name__, step, oname))
+    if not found_c:
+      data[agentname][oname] = []
+      print('Ran {} for {} steps; did not find counterfactual {}'.format(agent.__class__.__name__, step, str(counterfactual)))
 
 # %% [markdown]
 # Instantiate an experiment for each of the outcomes we 
@@ -245,10 +252,14 @@ exps : Dict[str, Experiment] = {}
 for agent in agents:
   agentname = agent.__class__.__name__
   outcome = data[agentname]
-  agent.reset()
+  agent.reset(seed=exp_seed)
   for oname, trace in outcome.items():
     modelmod = 'models.breakout.' + agentname.lower()
     sample_data_dir = os.path.sep.join(['analysis', 'data', 'raw', agentname])
+    with Toybox('breakout', withstate=trace[0][0].encode()) as tb:
+      tb.save_frame_image('begin_{}_{}.png'.format(oname, agent.__class__.__name__))
+    with Toybox('breakout', withstate=trace[-1][0].encode()) as tb:
+      tb.save_frame_image('end_{}_{}.png'.format(oname, agent.__class__.__name__))
     if len(trace):
       exp = Experiment(
         game_name='breakout',
@@ -257,10 +268,12 @@ for agent in agents:
         outcome_var=outcomes[oname][0],        
         counterfactual=outcomes[oname][1],
         core_constraints={
-          r'bricks\[\d+?\]\.size\..*', 
-          r'bricks\[\d+?\]\.position\..*',
-          r'bricks\[\d+?\]\.color\..*',
-          r'bricks\[\d+?\]\.[(col)|(row)|(points)|(depth)]',
+          # r'bricks\[\d+?\]\.size\..*', 
+          # r'bricks\[\d+?\]\.position\..*',
+          # r'bricks\[\d+?\]\.color\..*',
+          # r'bricks\[\d+?\]\.[(col)|(row)|(points)|(depth)]',
+          r'bricks.*',
+          r'.*\.y$'
         },
         derived_vars={
           XDistanceBallPaddle(modelmod)
@@ -270,13 +283,12 @@ for agent in agents:
         agent=agent,
         outdir = os.sep.join(['exp', agentname, oname])
       )
+      intervened_state, intervened_outcome = exp.run()
+      print(intervened_state, intervened_outcome)
+      exps[oname] = exp
     else: 
       print('\nNo instances of {} found'.format(oname))
-    exp.agent.toybox.apply_action(get_ball)
 
-    intervened_state, intervened_outcome = exp.run()
-    print(intervened_state, intervened_outcome)
-    exps[oname] = exp
 
 # %% [shell]
 

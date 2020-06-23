@@ -15,8 +15,6 @@ class Target(StayAliveJitter):
 
     def get_action(self):
         input = Input()
-        input.button1 = True
-
         with breakout.BreakoutIntervention(self.toybox) as intervention:
             game = intervention.game
 
@@ -39,7 +37,7 @@ class Target(StayAliveJitter):
                 self.prev_bally = bally
                 return super().get_action(intervention=intervention)
             
-            logging.info('TARGET', self.frame_counter)
+            logging.info('TARGET', self._frame_counter)
             # TARGETING TIME
             # get the column with the fewest bricks greater than zero
             # if there is one brick, stop early
