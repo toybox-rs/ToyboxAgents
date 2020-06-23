@@ -1,3 +1,5 @@
+#!/bin/bash 
+
 source .env/bin/activate
 pip install -r REQUIREMENTS.txt
 
@@ -31,6 +33,6 @@ elif [ "$1" = "swarm" ]; then
     --outcome MissedBall \
     --counterfactual HitBall \
     --outdir $WORK1/autoexp/exp/Target/MissedBall \
-    --datadir$training_data
+    --datadir $training_data
     > $WORK1/autoexp/exp_Target_MissedBall.txt
 fi
