@@ -90,7 +90,7 @@ agent = eval(agent_mod + '.' + args.agent[0])(Toybox(args.game, seed=args.seed),
 
 
 if args.datadir: 
-  print('Learning models for {} on {} from {}'.format(str(agent), args.game, *args.datadir))
+  print('Learning models for {} on {} from {}'.format(str(agent), args.game, args.datadir))
   training_states = []
   for d in args.datadir:
     training_states.extend(load_states(d, args.game))
