@@ -7,10 +7,10 @@ import logging
 
 class Target(StayAliveJitter):
 
-    def __init__(self, toybox:Toybox):
+    def __init__(self, *args, **kwargs):
         self.prev_bally = None
         self.score = 0
-        super().__init__(toybox)
+        super().__init__(*args, **kwargs)
         seed(self.seed)
 
     def get_action(self):
