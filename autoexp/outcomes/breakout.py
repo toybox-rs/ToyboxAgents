@@ -9,10 +9,10 @@ from toybox.envs.atari.base import ACTION_MEANING
 from . import *
 from agents.base import action_to_string
 
-class StagnantBall(Exception):
+class StagnantBall(OutcomeException):
 
     def __init__(self, frames: List[Breakout], window):
-        super().__init__('No change in ball y position for {} consecutive states'.format(window))
+        super().__init__('No change in ball y position for {} consecutive states.'.format(window))
         self.frames = frames
         self.window = window
 
@@ -95,7 +95,7 @@ class HitBall(Outcome):
     def __init__(self):
         super().__init__(3)
 
-    def outcomep(self, pairs: List[Tuple[Breakout, str]]):
+    def outcomep(self, pairs):
         # We need at least three states in order to tell if we've hit the ball
         InadequateWindowError.check_window(pairs, self.minwindow, HitBall)
         # before: heading down

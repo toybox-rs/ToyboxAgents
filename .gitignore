@@ -24,3 +24,6 @@ analysis/sa_joint_density.png analysis/sa_xpos_ball_paddle.png analysis/saj_join
 build
 dist
 toybox_*
+*.err
+models
+*.out
