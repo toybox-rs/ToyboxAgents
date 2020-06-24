@@ -1,4 +1,4 @@
-ctoybox
+ctoybox==0.4.2
 git+git://github.com/toybox-rs/Toybox.git@domains#egg=toybox
 tabulate
 sklearn

@@ -1,17 +1,19 @@
-from . import *
 from random import random, seed, randint
+from ctoybox import Input
+from . import BreakoutAgent
 
 class StayAliveJitter(BreakoutAgent):
     """Reacts to the x position, with some random chance of not moving."""
 
-    def __init__(self, toybox: Toybox):
+    def __init__(self, *args, **kwargs):
         self.jitter = 0.3
         self.prev_ballx = None
-        super().__init__(toybox)
+        super().__init__(*args, **kwargs)
         seed(self.seed)
 
     def get_action(self, intervention=None):
         input = Input()
+        input.button1 = True
 
         with (intervention or breakout.BreakoutIntervention(self.toybox)) as intervention:
             game = intervention.game
