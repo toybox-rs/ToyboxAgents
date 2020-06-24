@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from toybox.interventions import Game
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 def sign(n):
   return -1 if n < 0 else 1 if n > 0 else 0
@@ -28,6 +28,6 @@ class Outcome(ABC):
         return self.__class__.__name__
 
     @abstractmethod
-    def outcomep(self, pairs: List[Tuple[Game, str, int]]) -> bool: pass
+    def outcomep(self, pairs: List[Tuple[Game, Union[str, int]]]) -> bool: pass
 
     def get_name(self): return self.__class__.__name__
