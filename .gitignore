@@ -27,3 +27,5 @@ toybox_*
 *.err
 models
 *.out
+exp
+analysis/data/raw*

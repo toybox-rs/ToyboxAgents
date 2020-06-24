@@ -337,14 +337,12 @@ class Experiment(object):
           # generate control
           control_states = self.run_control(game, intervention, prop, after, s1)
           intervened_outcome = self.counterfactual.outcomep(sapairs)
-
           # s2_ = game.decode(intervention,  self.agent.states[-1].encode(), game)
           if intervened_outcome:
             print('Original and intervened outcome differ for property', prop)
             print('ball y control:\n' + '\t'.join([str(s.balls[0].position.y) for s in control_states]))
             print('ball y interve:\n' + '\t'.join([str(s[0].balls[0].position.y) for s in sapairs]))
-            return s1_, intervened_outcome
-          
+            return s1_, intervened_outcome          
 
         except LikelyConstantError as e:
           print('\t' + str(e))

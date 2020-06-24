@@ -3,8 +3,6 @@
 #SBATCH --output=exp_Target_MissedBall.out
 #SBATCH -e exp_Target_MissedBall.err
 
-
-
 source .env/bin/activate
 pip install -r REQUIREMENTS.txt 1> /dev/null
 
@@ -22,8 +20,8 @@ if [ "$1" = "local" ]; then
     --outcome MissedBall \
     --counterfactual HitBall \
     --outdir exp/Target/MissedBall \
-    --datadir $training_data
-    > exp_Target_MissedBall.sh
+    --datadir $training_data \
+    1> exp_Target_MissedBall.out 2> exp_Target_MissedBall.err
 elif [ "$1" = "swarm" ]; then
   echo "Executing on swarm..."
   if [ "$2" = "learn" ]; then 
@@ -35,7 +33,7 @@ elif [ "$1" = "swarm" ]; then
     --outcome MissedBall \
     --counterfactual HitBall \
     --outdir $WORK1/autoexp/exp/Target/MissedBall \
-    --seed 6242020 \
+    --seed 6232020 \
     --maxsteps 2000 \
     --window 64 \
     --datadir $training_data
