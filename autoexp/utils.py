@@ -28,11 +28,13 @@ def learn_models(states: List[Game], modelmod:str, game: str):
 
 
 def find_outcome_window(outcome: Outcome, states: List[Tuple[Game, Union[str, int, Input]]], window: int) -> List[Tuple[Game, Union[str, int, Input]]]:
-  """Search over the input game states for the window that terminates in the outcome being true."""
+  """Search over the input game states for the window of max size equal to the input parameter that terminates in the outcome being true."""
   i = 0
-  while i + outcome.minwindow <= len(states):
-    dat = states[i:i+outcome.minwindow]
+  upper = outcome.minwindow + 1
+  while upper <= len(states):
+    dat = states[i:upper]
     if outcome.outcomep(dat):
-      return states[max(0, i + outcome.minwindow - window):i+outcome.minwindow]
+      return states[max(0, upper - window):upper]
     i += 1
+    upper += 1
   return []

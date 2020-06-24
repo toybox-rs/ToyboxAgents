@@ -1,11 +1,31 @@
 # Outcomes may not be valid at every timestep.
 # Outcomes must be binary
+from typing import List, Tuple, Optional
+
+from ctoybox import Toybox
 from toybox.interventions.breakout import Breakout
 from toybox.envs.atari.base import ACTION_MEANING
-from typing import List, Tuple, Optional
 
 from . import *
 from agents.base import action_to_string
+
+class StagnantBall(Exception):
+
+    def __init__(self, frames: List[Breakout], window):
+        super().__init__('No change in ball y position for {} consecutive states'.format(window))
+        self.frames = frames
+        self.window = window
+
+    def write_frame_images(self):
+        for i, frame in enumerate(self.frames):
+            f = 'debug_stagnant_ball_' + str(i).zfill(3) + '.png'
+            Toybox('breakout', withstate=frame.encode()).save_frame_image(f)
+
+    def save_frame_state(self):
+        for i, frame in enumerate(self.frames):
+            f = 'debug_stagnant_ball_' + str(i).zfill(3) + '.json'
+            Toybox('breakout', withstate=frame.encode()).save_frame_image(f)
+
 
 def direction(pairs) -> Optional[int]:
     """Returns the direction the ball is travelling in.
@@ -108,7 +128,9 @@ class HitBall(Outcome):
                     return False # window too big
 
         if all([d == 0 for d in diffs]):
-            raise ValueError('No change in ball y position for {} consecutive states'.format(len(pairs)))
+            e = StagnantBall([t[0] for t in pairs], len(pairs))
+            e.write_frame_images()
+            raise e 
         return heading_down is False 
 
 class MoveSame(Outcome):

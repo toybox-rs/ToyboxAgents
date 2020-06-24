@@ -2,7 +2,7 @@
 
 For information, use with argument --help.
 """
-
+print('executing autoexp/__main__.py')
 import argparse
 import importlib
 import os
@@ -32,10 +32,10 @@ parser.add_argument('--datadir',
   help='The directory/directories where we store data for training the sampler')
 parser.add_argument('--agent',
   required=True,
-  nargs='*',
+  nargs='+',
   help='The agent class for this experiment.')
 parser.add_argument('--seed', 
-  default=642020,
+  default=6232020,
   type=int)
 parser.add_argument('--maxsteps',
   default=2000,
@@ -69,8 +69,7 @@ parser.add_argument('--constraints',
   help='The constraints we want to apply to the atomic attributes.')
 parser.add_argument('--record_json',
   default=False,
-  action='store_true'
-)
+  action='store_true')
 parser.add_argument('--outdir',
   required=True,
   help='Where to store the logged experiment data.'
@@ -86,13 +85,16 @@ counterfactual = eval('outcomes.' + args.game + '.' + args.counterfactual[0])(*a
 
 agent_mod = '.'.join(['agents', args.game, args.agent[0].lower()])
 importlib.import_module(agent_mod)
-agent = eval(agent_mod + '.' + args.agent[0])(Toybox(args.game, seed=args.seed), *args.agent[1:])
+tb = Toybox(args.game, seed=args.seed)
+agent = eval(agent_mod + '.' + args.agent[0])(tb, *args.agent[1:])
 
+print('args.datadir', args.datadir)
 
 if args.datadir: 
   print('Learning models for {} on {} from {}'.format(str(agent), args.game, args.datadir))
   training_states = []
   for d in args.datadir:
+    print('Loading states from', d)
     training_states.extend(load_states(d, args.game))
   learn_models(training_states, args.model, args.game)
 
