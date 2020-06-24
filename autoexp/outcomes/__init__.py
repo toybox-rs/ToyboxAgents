@@ -5,7 +5,9 @@ from typing import List, Tuple, Union
 def sign(n):
   return -1 if n < 0 else 1 if n > 0 else 0
 
-class InadequateWindowError(Exception):
+class OutcomeException(Exception): pass
+
+class InadequateWindowError(OutcomeException):
 
     def __init__(self, got, expecting, outcome):
         self.got = got

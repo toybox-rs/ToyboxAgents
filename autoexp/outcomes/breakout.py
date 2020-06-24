@@ -9,10 +9,10 @@ from toybox.envs.atari.base import ACTION_MEANING
 from . import *
 from agents.base import action_to_string
 
-class StagnantBall(Exception):
+class StagnantBall(OutcomeException):
 
     def __init__(self, frames: List[Breakout], window):
-        super().__init__('No change in ball y position for {} consecutive states'.format(window))
+        super().__init__('No change in ball y position for {} consecutive states.'.format(window))
         self.frames = frames
         self.window = window
 

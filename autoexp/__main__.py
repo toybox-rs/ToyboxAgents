@@ -2,10 +2,10 @@
 
 For information, use with argument --help.
 """
-print('executing autoexp/__main__.py')
 import argparse
 import importlib
 import os
+import sys
 
 from typing import Optional, List, Tuple
 
@@ -88,10 +88,9 @@ importlib.import_module(agent_mod)
 tb = Toybox(args.game, seed=args.seed)
 agent = eval(agent_mod + '.' + args.agent[0])(tb, *args.agent[1:])
 
-print('args.datadir', args.datadir)
 
 if args.datadir: 
-  print('Learning models for {} on {} from {}'.format(str(agent), args.game, args.datadir))
+  print('Learning models for {} on {} from {}'.format(str(agent), args.game, args.datadir), flush=True)
   training_states = []
   for d in args.datadir:
     print('Loading states from', d)
@@ -103,7 +102,7 @@ trace: Optional[List[Tuple[Game, str]]] = None
 
 if args.outcome_dir:
   # load up the outcome data 
-  print('Loading {} trace for {} from {}'.format(outcome.__name__, agent.__name__, args.outcome_dir))
+  print('Loading {} trace for {} from {}'.format(outcome.__name__, agent.__name__, args.outcome_dir), flush=True)
   trace = load_states(args.outcome_dir, args.game)
 else:
   # search for the outcome under normal gameplay
@@ -119,17 +118,24 @@ else:
 
   while (not tb.game_over() and step < args.maxsteps) and (not agent.done if hasattr(agent, 'done') else True):
     action_window = agent.actions[-1 * args.window:]
-    state_window = agent.states[-1 * args.window:]
-    states = list(zip(state_window, action_window))
-    outcome_sapairs = find_outcome_window(outcome, states, args.window)
-    counterfactual_sapairs = find_outcome_window(counterfactual, states, args.window)
+    state_window  = agent.states[-1 * args.window:]
+    states        = list(zip(state_window, action_window))
+    try:
+      outcome_sapairs        = find_outcome_window(outcome,        states, args.window)
+      counterfactual_sapairs = find_outcome_window(counterfactual, states, args.window)
+    except outcomes.OutcomeException as e:
+      print(e, file=sys.stderr)
+      print('\tPredicate applied over time steps [{}, {}]'.format(len(agent.states) - args.window - 1, len(agent.states) - 1), file=sys.stderr, flush=True)
+      outcome_sapairs, counterfactual_sapairs = [], []
+            
     
     if outcome_sapairs and not found_o: 
       print('Found outcome {} for {} during window [{}, {}]!'.format(
-        outcome.__class__.__name__, 
-        agent.__class__.__name__, 
-        max(step - args.window, 0), 
-        step))
+          outcome.__class__.__name__, 
+          agent.__class__.__name__, 
+          max(step - args.window, 0), 
+          step),
+        flush=True)
       Toybox(args.game, withstate=outcome_sapairs[0][0].encode()).save_frame_image('outcome_{}_{}_begin.png'.format(str(outcome), str(agent)))
       Toybox(args.game, withstate=outcome_sapairs[-1][0].encode()).save_frame_image('outcome_{}_{}_end.png'.format(str(outcome), str(agent)))
       found_o = True
@@ -138,10 +144,11 @@ else:
 
     if counterfactual_sapairs and not found_c: 
       print('Found counterfactual {} for {} during window [{}, {}]!'.format(
-        counterfactual.__class__.__name__, 
-        agent.__class__.__name__, 
-        max(step - args.window, 0), 
-        step))
+          counterfactual.__class__.__name__, 
+          agent.__class__.__name__, 
+          max(step - args.window, 0), 
+          step),
+        flush=True)
       Toybox(args.game, withstate=counterfactual_sapairs[0][0].encode()).save_frame_image('counterfactual_{}_{}_begin.png'.format(str(counterfactual), str(agent)))
       Toybox(args.game, withstate=counterfactual_sapairs[-1][0].encode()).save_frame_image('counterfactual_{}_{}_end.png'.format(str(counterfactual), str(agent)))
       found_c = True
@@ -152,7 +159,7 @@ else:
     step += agent.action_repeat
 
   if not found_o: 
-    print('Ran {} for {} steps; did not find outcome {}'.format(str(agent), step, outcome))
+    print('Ran {} for {} steps; did not find outcome {}'.format(str(agent), step, str(outcome)))
     exit(0)
   if not found_c:
     print('Ran {} for {} steps; did not find counterfactual {}'.format(str(agent), step, str(counterfactual)))
