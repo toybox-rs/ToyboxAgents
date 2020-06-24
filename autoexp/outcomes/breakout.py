@@ -52,7 +52,7 @@ class MissedBall(Outcome):
     def __init__(self):
         super().__init__(2)
 
-    def outcomep(self, pairs: List[Tuple[Breakout, str]]):
+    def outcomep(self, pairs):
         # We need at least two states in order to tell if we've missed
         InadequateWindowError.check_window(pairs, self.minwindow, MissedBall)
         # If we have 0 balls at tn, but we had at least one
@@ -75,7 +75,7 @@ class HitBall(Outcome):
     def __init__(self):
         super().__init__(3)
 
-    def outcomep(self, pairs: List[Tuple[Breakout, str]]):
+    def outcomep(self, pairs):
         # We need at least three states in order to tell if we've hit the ball
         InadequateWindowError.check_window(pairs, self.minwindow, HitBall)
         # before: heading down
@@ -105,7 +105,7 @@ class HitBall(Outcome):
                     heading_down = False
             elif heading_down is False:
                 if diff > 0: 
-                    return False # window too big
+                    return False # window too big   
 
         if all([d == 0 for d in diffs]):
             raise ValueError('No change in ball y position for {} consecutive states'.format(len(pairs)))
