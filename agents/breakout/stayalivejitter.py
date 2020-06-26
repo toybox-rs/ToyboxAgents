@@ -1,6 +1,10 @@
 from random import random, seed, randint
+
 from ctoybox import Input
+from toybox.interventions.breakout import BreakoutIntervention
+
 from . import BreakoutAgent
+
 
 class StayAliveJitter(BreakoutAgent):
     """Reacts to the x position, with some random chance of not moving."""
@@ -13,9 +17,8 @@ class StayAliveJitter(BreakoutAgent):
 
     def get_action(self, intervention=None):
         input = Input()
-        input.button1 = True
 
-        with (intervention or breakout.BreakoutIntervention(self.toybox)) as intervention:
+        with (intervention or BreakoutIntervention(self.toybox)) as intervention:
             game = intervention.game
             if len(game.balls) == 0: return input
             ballx = game.balls[0].position.x

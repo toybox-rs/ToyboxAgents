@@ -2,7 +2,7 @@
 #
 #SBATCH --output=exp_StayAlive_HitBall.out
 #SBATCH -e exp_StayAlive_HitBall.err
-#SBATCH --time=12:00:00
+#SBATCH --time=0-11:59
 
 source .env/bin/activate
 pip install -r REQUIREMENTS.txt 1> /dev/null
