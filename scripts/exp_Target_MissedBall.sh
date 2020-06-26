@@ -2,6 +2,7 @@
 #
 #SBATCH --output=exp_Target_MissedBall.out
 #SBATCH -e exp_Target_MissedBall.err
+#SBATCH --time=0-11:59
 
 source .env/bin/activate
 pip install -r REQUIREMENTS.txt 1> /dev/null

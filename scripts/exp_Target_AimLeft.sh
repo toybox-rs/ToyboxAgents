@@ -1,7 +1,7 @@
 #!/bin/bash 
 #
-#SBATCH --output=exp_Target_HitBall.out
-#SBATCH -e exp_Target_HitBall.err
+#SBATCH --output=exp_Target_AimLeft.out
+#SBATCH -e exp_Target_AimLeft.err
 #SBATCH --time=0-11:59
 
 source .env/bin/activate
@@ -18,12 +18,12 @@ if [ "$1" = "local" ]; then
     --seed 6232020 \
     --maxsteps 2000 \
     --window 64 \
-    --outcome HitBall \
-    --counterfactual MissedBall \
-    --outdir exp/Target/HitBall \
+    --outcome Aim left \
+    --counterfactual Aim right \
+    --outdir exp/Target/AimLeft \
     --datadir $training_data \
     --constraints 'bricks\[.*?\].*' \
-    1> exp_Target_HitBall.out 2> exp_Target_HitBall.err
+    1> exp_Target_AimLeft.out 2> exp_Target_AimLeft.err
 elif [ "$1" = "swarm" ]; then
   echo "Executing on swarm..."
   if [ "$2" = "learn" ]; then 
@@ -32,9 +32,9 @@ elif [ "$1" = "swarm" ]; then
   python -m autoexp breakout \
     --model models.breakout.target  \
     --agent Target \
-    --outcome HitBall \
-    --counterfactual MissedBall \
-    --outdir $WORK1/autoexp/exp/Target/HitBall \
+    --outcome Aim left \
+    --counterfactual Aim right \
+    --outdir $WORK1/autoexp/exp/Target/AimLeft \
     --seed 6232020 \
     --maxsteps 2000 \
     --window 64 \
