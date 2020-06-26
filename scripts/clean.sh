@@ -1,4 +1,6 @@
 rm *.png
+rm *.out
+rm *.err
 
 rm -rf exp
 rm -rf dist

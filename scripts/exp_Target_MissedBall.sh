@@ -21,6 +21,7 @@ if [ "$1" = "local" ]; then
     --counterfactual HitBall \
     --outdir exp/Target/MissedBall \
     --datadir $training_data \
+    --constraints 'bricks\[.*?\].*' \
     1> exp_Target_MissedBall.out 2> exp_Target_MissedBall.err
 elif [ "$1" = "swarm" ]; then
   echo "Executing on swarm..."
