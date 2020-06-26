@@ -1,5 +1,6 @@
 # Outcomes may not be valid at every timestep.
 # Outcomes must be binary
+import json
 from typing import List, Tuple, Optional
 
 from ctoybox import Toybox
@@ -21,10 +22,10 @@ class StagnantBall(OutcomeException):
             f = 'debug_stagnant_ball_' + str(i).zfill(3) + '.png'
             Toybox('breakout', withstate=frame.encode()).save_frame_image(f)
 
-    def save_frame_state(self):
+    def write_frame_state(self):
         for i, frame in enumerate(self.frames):
-            f = 'debug_stagnant_ball_' + str(i).zfill(3) + '.json'
-            Toybox('breakout', withstate=frame.encode()).save_frame_image(f)
+            with open('debug_stagnant_ball_' + str(i).zfill(3) + '.json', 'w') as f:
+                json.dump(frame.encode(), f)
 
 
 def direction(pairs) -> Optional[int]:
@@ -130,6 +131,7 @@ class HitBall(Outcome):
         if all([d == 0 for d in diffs]):
             e = StagnantBall([t[0] for t in pairs], len(pairs))
             e.write_frame_images()
+            e.write_frame_state()
             raise e 
         return heading_down is False 
 
