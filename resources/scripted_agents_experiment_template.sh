@@ -4,8 +4,8 @@
 ## highlighting in an IDE
 #!/bin/bash 
 #
-#SBATCH --output=$WORK1/ToyboxAgents/run_{agent}_{outcome_fmt}.out
-#SBATCH -e $WORK1/ToyboxAgents/run_{agent}_{outcome_fmt}.err
+#SBATCH --output=/mnt/nfs/work1/jensen/etosch/autoexp/run_{agent}_{outcome_fmt}.out
+#SBATCH -e /mnt/nfs/work1/jensen/etosch/autoexp/run_{agent}_{outcome_fmt}.err
 #SBATCH --time={time}
 #SBATCH --partition={partition}
 
