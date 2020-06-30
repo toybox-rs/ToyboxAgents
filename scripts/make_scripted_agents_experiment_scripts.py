@@ -4,6 +4,9 @@
 import argparse
 import os
 
+with open(os.sep.join(['resources', 'seeds.txt']), 'r') as f:
+  default_seeds = [int(line) for line in f.readlines()]
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--agents',
@@ -18,7 +21,7 @@ parser.add_argument('--outcomes',
 )
 parser.add_argument('--seeds',
   nargs='+',
-  default=[30062020]
+  default=default_seeds
 )
 parser.add_argument('--time', default='0-11:59')
 parser.add_argument('--partition', default='defq')
@@ -53,5 +56,5 @@ with open(os.sep.join(['resources', 'scripted_agents_experiment_template.sh']), 
           outcome=outcome,
           counterfactual=counterfactuals[outcome]
          )
-        with open(os.sep.join(['scripts', 'experiments', '_'.join(['run', agent, outcome_fmt + '.sh'])]), 'w') as out:
+        with open(os.sep.join(['scripts', 'experiments', '_'.join(['run', agent, outcome_fmt, str(seed)]) + '.sh']), 'w') as out:
           out.write(instance)

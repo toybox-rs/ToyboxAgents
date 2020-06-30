@@ -4,8 +4,8 @@
 ## highlighting in an IDE
 #!/bin/bash 
 #
-#SBATCH --output=/mnt/nfs/work1/jensen/etosch/autoexp/run_{agent}_{outcome_fmt}.out
-#SBATCH -e /mnt/nfs/work1/jensen/etosch/autoexp/run_{agent}_{outcome_fmt}.err
+#SBATCH --output=/mnt/nfs/work1/jensen/etosch/autoexp/run_{agent}_{outcome_fmt}_{seed}.out
+#SBATCH -e /mnt/nfs/work1/jensen/etosch/autoexp/run_{agent}_{outcome_fmt}_{seed}.err
 #SBATCH --time={time}
 #SBATCH --partition={partition}
 
@@ -25,10 +25,10 @@ if [ "$1" = "local" ]; then
     --window 64 \
     --outcome {outcome} \
     --counterfactual {counterfactual} \
-    --outdir exp/{agent}/{outcome_fmt} \
+    --outdir exp/{agent}/{outcome_fmt}/{seed} \
     --datadir $training_data \
     --constraints 'bricks\[.*?\].*' \
-    1> run_{agent}_{outcome}.out 2> run_{agent}_{outcome_fmt}.err
+    1> run_{agent}_{outcome}_{seed}.out 2> run_{agent}_{outcome_fmt}_{seed}.err
 elif [ "$1" = "swarm" ]; then
   echo "Executing on swarm..."
   if [ "$2" = "learn" ]; then 
@@ -39,7 +39,7 @@ elif [ "$1" = "swarm" ]; then
     --agent {agent} \
     --outcome {outcome} \
     --counterfactual {counterfactual} \
-    --outdir $WORK1/autoexp/exp/{agent}/{outcome_fmt} \
+    --outdir $WORK1/autoexp/exp/{agent}/{outcome_fmt}/{seed} \
     --seed {seed} \
     --maxsteps 2000 \
     --window 64 \
