@@ -7,6 +7,7 @@ import importlib
 import os
 import sys
 
+from timeit import default_timer as timer
 from typing import Optional, List, Tuple
 
 
@@ -136,11 +137,13 @@ else:
           max(step - args.window, 0), 
           step),
         flush=True)
-      Toybox(args.game, withstate=outcome_sapairs[0][0].encode()).save_frame_image('outcome_{}_{}_begin.png'.format(str(outcome), str(agent)))
-      Toybox(args.game, withstate=outcome_sapairs[-1][0].encode()).save_frame_image('outcome_{}_{}_end.png'.format(str(outcome), str(agent)))
-      found_o = True
-      trace = outcome_sapairs
-      if found_c: break
+      # Want to make sure we don't pick an outcome too early in the game.
+      if len(outcome_sapairs) >= 0.5 * args.window:
+        Toybox(args.game, withstate=outcome_sapairs[0][0].encode()).save_frame_image('outcome_{}_{}_begin.png'.format(str(outcome), str(agent)))
+        Toybox(args.game, withstate=outcome_sapairs[-1][0].encode()).save_frame_image('outcome_{}_{}_end.png'.format(str(outcome), str(agent)))
+        found_o = True
+        trace = outcome_sapairs
+        if found_c: break
 
     if counterfactual_sapairs and not found_c: 
       print('Found counterfactual {} for {} during window [{}, {}]!'.format(
@@ -179,6 +182,10 @@ exp = Experiment(
   agent=agent, 
   outdir=args.outdir
 )
+num_mut_pts = len(exp.mutation_points)
+start = timer()
 intervened_state, intervened_outcome = exp.run()
-print(intervened_state)
-print(intervened_outcome)
+end = timer()
+print('Num mutation points: {}'.format(num_mut_pts))
+print('Num interventions attempted: {}'.format(sum(len(items) for items in exp.interventions.values())))
+print('Elapsed time: {}'.format(end - start))

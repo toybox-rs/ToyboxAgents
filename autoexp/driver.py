@@ -310,11 +310,6 @@ class Experiment(object):
 
       while len(self.interventions) < len(self.mutation_points):
         mutations_attempted = sum([len(tried) for tried in self.interventions.values()])
-        if len(self.interventions) and ((mutations_attempted % 100) == 0):
-          print('{} possible mutation points; {} interventions attempted so far'.format(len(self.mutation_points), mutations_attempted))
-          print(tabulate([(var, len(items)) for (var, items) in self.interventions.items()], 
-            headers=['Property', 'Count']))
-
         t = self.timelag
         sapairs: List[Tuple[Game, str]] = [] # the window
 
@@ -341,6 +336,7 @@ class Experiment(object):
           # s2_ = game.decode(intervention,  self.agent.states[-1].encode(), game)
           if intervened_outcome:
             print('Original and intervened outcome differ for property', prop)
+            print(tabulate([(var, len(items)) for (var, items) in self.interventions.items()], headers=['Property', 'Count']))
             return s1_, intervened_outcome          
 
         except LikelyConstantError as e:
@@ -350,6 +346,7 @@ class Experiment(object):
           if e.prop in self.interventions: self.interventions.remove(e.prop)
 
 
+      print(tabulate([(var, len(items)) for (var, items) in self.interventions.items()], headers=['Property', 'Count']))
       self.timelag = max(-1 * len(self.trace), self.timelag * 2) # will pick the less negative one
       print('Doubling lookback to {}\n'.format(self.timelag))
       self.interventions = OrderedDict()

@@ -201,30 +201,33 @@ class MoveOpposite(Outcome):
 
 
 class MoveAway(Outcome):
-    # Basically the same as MoveOpposite, but restricted to cases 
-    # when the paddle moves AWAY from the ball
+    # Move Opposite + distance increasing
 
   def __init__(self):
     super().__init__(4)
 
   def outcomep(self, pairs):
     InadequateWindowError.check_window(pairs, self.minwindow, MoveAway)
-    
-    away_dir = 0  
-    
-    for i, (s1, a) in enumerate(pairs[:-1]):
-      s2 = pairs[i+1][0]
-      
-      if len(s1.balls) and len(s2.balls):
-        diff1 = abs(s1.balls[0].position.x - s1.paddle.position.x)
-        diff2 = abs(s2.balls[0].position.x - s2.paddle.position.x)
-        diff = diff2 - diff1
-        moving = s1.paddle.position.x - s2.paddle.position.x
 
-        if diff > 0 and moving:
-          away_dir += 1
+    if MoveOpposite().outcomep(pairs):
     
-    return away_dir > (len(pairs) / 2.)
+        away_dir = 0  
+
+        for i, (s1, a) in enumerate(pairs[:-1]):
+          s2 = pairs[i+1][0]
+
+          if len(s1.balls) and len(s2.balls):
+            diff1 = abs(s1.balls[0].position.x - s1.paddle.position.x)
+            diff2 = abs(s2.balls[0].position.x - s2.paddle.position.x)
+            diff = diff2 - diff1
+            moving = s1.paddle.position.x - s2.paddle.position.x
+
+            if diff > 0 and moving:
+              away_dir += 1
+
+        return away_dir > (len(pairs) / 2.)
+        
+    else: return False
 
 
 class MoveToward(Outcome):
