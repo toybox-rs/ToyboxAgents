@@ -205,7 +205,7 @@ class MoveAway(Outcome):
     # when the paddle moves AWAY from the ball
 
   def __init__(self):
-    super().__init__(2)
+    super().__init__(4)
 
   def outcomep(self, pairs):
     InadequateWindowError.check_window(pairs, self.minwindow, MoveAway)
@@ -230,7 +230,7 @@ class MoveAway(Outcome):
 class MoveToward(Outcome):
 
     def __init__(self):
-        super().__init__(2)
+        super().__init__(4)
 
     def outcomep(self, pairs):
         InadequateWindowError.check_window(pairs, self.minwindow, MoveToward)
