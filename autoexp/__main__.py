@@ -138,7 +138,7 @@ else:
           step),
         flush=True)
       # Want to make sure we don't pick an outcome too early in the game.
-      if len(outcome_sapairs) >= 0.5 * args.window:
+      if len(outcome_sapairs) >= 2 * outcome.minwindow:
         Toybox(args.game, withstate=outcome_sapairs[0][0].encode()).save_frame_image('outcome_{}_{}_begin.png'.format(str(outcome), str(agent)))
         Toybox(args.game, withstate=outcome_sapairs[-1][0].encode()).save_frame_image('outcome_{}_{}_end.png'.format(str(outcome), str(agent)))
         found_o = True
