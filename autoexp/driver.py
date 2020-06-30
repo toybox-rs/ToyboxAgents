@@ -15,8 +15,8 @@ from toybox.interventions.base import BaseMixin, Collection, SetEq
 
 from .outcomes import Outcome, InadequateWindowError
 from .vars import Var
-from .vars.derived import Derived
-from .vars.core import get_core_vars
+from .vars.composite import Composite
+from .vars.atomic import get_core_vars
 
 
 try: 
@@ -106,12 +106,12 @@ class Experiment(object):
     trace: List[Tuple[Game, str]],
     agent: Agent,  
     # Now the optional inputs
-    derived_vars: Set[Derived] = set(),
+    composite_vars: Set[Composite] = set(),
     # For learning marginals
     sample_data_dir = '',
     # An input slice that can potentially make learning faster
     data_range = slice(2000),
-    core_constraints: Set[str] = set(), #regexes
+    atomic_constraints: Set[str] = set(), #regexes
     timelag = 1,
     diff_trials = 30,
     discretization_cutoff = 5,
@@ -128,8 +128,8 @@ class Experiment(object):
     self.trace = Trace(game_name, modelmod, seed, trace)
     self.agent = agent
 
-    self.derived_vars = derived_vars
-    self.core_constraints = core_constraints
+    self.composite_vars = composite_vars
+    self.atomic_constraints = atomic_constraints
     self.compute_distributions(sample_data_dir, data_range)
 
     self.timelag = -1 * max(abs(timelag), (outcome_var.minwindow + 1) * agent.action_repeat)
@@ -172,7 +172,7 @@ class Experiment(object):
         # compute distributions for core variables
         with intervener(tb, modelmod=self.modelmod, data=data): pass
     
-    for var in self.derived_vars:
+    for var in self.composite_vars:
       var.make_models(self.modelmod, data)
 
 
@@ -182,14 +182,14 @@ class Experiment(object):
   def generate_mutation_points(self) -> Set[Var]:
     # Doing it this way to get contravariance working for retval
     # If I set:
-    # retval : Set[Var] = self.derived_vars
-    # then mypy appears to immediately refine retval to Set[Derived]
+    # retval : Set[Var] = self.composite_vars
+    # then mypy appears to immediately refine retval to Set[Composite]
     retval : List[Var] = []
-    retval.extend(self.derived_vars)
+    retval.extend(self.composite_vars)
     retval.extend(get_core_vars(self.trace.outcome_state, 
       modelmod=self.modelmod, 
-      exclude=self.core_constraints,
-      derived=self.derived_vars))
+      exclude=self.atomic_constraints,
+      derived=self.composite_vars))
     assert len(retval), 'Must have more than zero mutation points to run an experiment!'
     return set(retval)
 
@@ -333,15 +333,14 @@ class Experiment(object):
           assert self.agent.actions
           # print(len(self.agent.states), len(self.agent.actions))
           sapairs.extend(zip(self.agent.states, self.agent.actions))
-          assert len(sapairs) >= self.outcome_var.minwindow, len(sapairs)
+          # This happens when an intervention causes a reset; skip it.
+          if len(sapairs) < self.outcome_var.minwindow: continue
           # generate control
           control_states = self.run_control(game, intervention, prop, after, s1)
           intervened_outcome = self.counterfactual.outcomep(sapairs)
           # s2_ = game.decode(intervention,  self.agent.states[-1].encode(), game)
           if intervened_outcome:
             print('Original and intervened outcome differ for property', prop)
-            print('ball y control:\n' + '\t'.join([str(s.balls[0].position.y) for s in control_states]))
-            print('ball y interve:\n' + '\t'.join([str(s[0].balls[0].position.y) for s in sapairs]))
             return s1_, intervened_outcome          
 
         except LikelyConstantError as e:

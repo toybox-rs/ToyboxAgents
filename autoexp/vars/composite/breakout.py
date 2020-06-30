@@ -1,4 +1,4 @@
-from . import Derived
+from . import Composite
 from toybox.interventions import Game
 from toybox.interventions.breakout import query_hack
 from toybox.interventions.core import distr, get_property
@@ -6,12 +6,12 @@ from toybox.interventions.core import distr, get_property
 import random
 import importlib
 
-class XDistanceBallPaddle(Derived):
+class XDistanceBallPaddle(Composite):
 
   def __init__(self, modelmod):
     super().__init__('xdist_ball_paddle', modelmod)
     # later change this so it is automatically generated
-    self.corevars = [
+    self.atomicvars = [
       'balls[0].position.x',
       'paddle.position.x'
     ]
@@ -43,7 +43,10 @@ class XDistanceBallPaddle(Derived):
     return before, g, after
 
 
+class LeftmostBrick(Composite):
 
+  def __init__(self, modelmod):
+    self.atomicvars
 
 
 # have a var for each color

@@ -4,11 +4,11 @@ from toybox.interventions.base import BaseMixin
 from toybox.interventions.core import get_property, Game, Collection
 
 from .. import Var
-from ..derived import Derived
+from ..composite import Composite
 
 import re
 
-class Core(Var):
+class Atomic(Var):
 
   def get(self, g: Game):
     return get_property(g, self.name)
@@ -47,7 +47,7 @@ def get_core_attributes(g: BaseMixin, prefix='') -> List[str]:
   return points
 
 
-def get_core_vars(g: BaseMixin, modelmod, exclude: Set[str] = set(), derived: Set[Derived] = set()) -> List[Core]:
+def get_core_vars(g: BaseMixin, modelmod, exclude: Set[str] = set(), derived: Set[Composite] = set()) -> List[Atomic]:
   all_points : List[str] = get_core_attributes(g)
   assert len(all_points)
   # first filter out the attributes that contribute to the derived vars
@@ -60,8 +60,8 @@ def get_core_vars(g: BaseMixin, modelmod, exclude: Set[str] = set(), derived: Se
   for thing in all_points:
     doexclude = False
     for constraint in exclude:
-      if Core.excludep(thing, constraint):
+      if Atomic.excludep(thing, constraint):
         doexclude = True; break
     if not doexclude:
-      retval.append(Core(thing, modelmod))
+      retval.append(Atomic(thing, modelmod))
   return retval

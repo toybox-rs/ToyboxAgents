@@ -138,7 +138,8 @@ class HitBall(Outcome):
 class MoveSame(Outcome):
 
     def __init__(self):
-        super().__init__(2)
+        # 1/ 3^4 ~= 0.01
+        super().__init__(4)
 
     def outcomep(self, pairs):
         InadequateWindowError.check_window(pairs, self.minwindow, MoveSame)
@@ -156,6 +157,7 @@ class MoveSame(Outcome):
     
         for s1, s2, a in zip(prevs, states, actions):
           a = action_to_string(a)
+
           if len(s1.balls) and len(s2.balls):
             if ball_dir > 0: # ball is moving right
               if a.upper().strip() == 'RIGHT': same_dir += 1
@@ -171,9 +173,7 @@ class MoveOpposite(Outcome):
     # for over 50% of the pairs
 
   def __init__(self):
-    super().__init__(2)
-
-  
+    super().__init__(4)
 
   def outcomep(self, pairs):
     # ball must be moving in the same direction for the whole window
@@ -191,6 +191,7 @@ class MoveOpposite(Outcome):
     
     for s1, s2, a in zip(prevs, states, actions):
       a = action_to_string(a)
+
       if len(s1.balls) and len(s2.balls):
         if ball_dir > 0: # ball is moving right
           if a.upper().strip() == 'LEFT': against_dir += 1

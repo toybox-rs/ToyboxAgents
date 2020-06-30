@@ -9,11 +9,11 @@ from .. import Var
 import os
 
 
-class Derived(Var):
+class Composite(Var):
 
   def __init__(self, name, modelmod):
     super().__init__(name, modelmod)
-    self.corevars = []
+    self.atomicvars = []
 
   def make_models(self, modelmod, data: List[Game]):
     outdir = modelmod.replace('.', '/') + os.sep
