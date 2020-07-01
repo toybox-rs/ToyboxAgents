@@ -18,7 +18,6 @@ class Target(StayAliveJitter):
         input = Input()
         with breakout.BreakoutIntervention(self.toybox) as intervention:
             game = intervention.game
-
             # We missed in the previous round; game over.
             if len(game.balls) == 0: return   
 

@@ -32,9 +32,6 @@ class VelocityEstimate(BreakoutAgent):
         pass
 
     def get_action(self):
-        input = Input()
-        input.button1 = True  # push a button so it starts the game
-
         with breakout.BreakoutIntervention(self.toybox) as intervention:
             game = intervention.game
 
@@ -87,5 +84,5 @@ class VelocityEstimate(BreakoutAgent):
                         frames = abs(ball_y - paddley) / self.ball_velocity
                         target_x = int(self.ball_velocity_x * frames + ball_x)
                         self.target_x = max(X_min, min(X_max, target_x))
-        print(self.target_x, paddlex, self.ball_moving_down)
+        # print(self.target_x, paddlex, self.ball_moving_down)
         return input
