@@ -28,7 +28,7 @@ if [ "$1" = "local" ]; then
     --outdir exp/{agent}/{outcome_fmt}/{seed} \
     --datadir $training_data \
     --constraints 'bricks\[.*?\].*' \
-    1> run_{agent}_{outcome}_{seed}.out 2> run_{agent}_{outcome_fmt}_{seed}.err
+    1> run_{agent}_{outcome_fmt}_{seed}.out 2> run_{agent}_{outcome_fmt}_{seed}.err
 elif [ "$1" = "swarm" ]; then
   echo "Executing on swarm..."
   if [ "$2" = "learn" ]; then 

@@ -87,7 +87,15 @@ counterfactual = eval('outcomes.' + args.game + '.' + args.counterfactual[0])(*a
 agent_mod = '.'.join(['agents', args.game, args.agent[0].lower()])
 importlib.import_module(agent_mod)
 tb = Toybox(args.game, seed=args.seed)
-agent = eval(agent_mod + '.' + args.agent[0])(tb, *args.agent[1:])
+arglist = []
+kwargs = {}
+for term in args.agent[1:]:
+  if '=' in term:
+    k, v = term.split('=')
+    kwargs[k] = v
+  else:
+    arglist.append(term)
+agent = eval(agent_mod + '.' + args.agent[0])(tb, *arglist, seed=args.seed, **kwargs)
 
 
 if args.datadir: 

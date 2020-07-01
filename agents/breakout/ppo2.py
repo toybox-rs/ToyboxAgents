@@ -8,12 +8,12 @@ import tensorflow as tf
 
 class PPO2(BreakoutAgent):
 
-    def __init__(self, toybox: Toybox, seed=1234, withstate=None):
+    def __init__(self, toybox: Toybox, *args, withstate=None, model_path='agents/data/BreakoutToyboxNoFrameskip-v4.regress.model', **kwargs):
         # The action_repeat value comes from the skip argument of 
         # MaxAndSkipEnv in atari_wrappers.py
         # Setting this back to 1 from 4 because I think it messes up some
         # of our reasoning.
-        super().__init__(toybox, seed=seed, action_repeat=4)
+        super().__init__(toybox, *args, action_repeat=4, **kwargs)
 
         nenv = 1
         frame_stack_size = 4
@@ -22,14 +22,13 @@ class PPO2(BreakoutAgent):
         family = 'ppo2'
  
         # Nb: OpenAI special cases acer, trpo, and deepQ.
-        env = VecFrameStack(make_vec_env(env_id, env_type, nenv, seed), frame_stack_size)
+        env = VecFrameStack(make_vec_env(env_id, env_type, nenv, self.seed), frame_stack_size)
         turtle = get_turtle(env)
-        turtle.toybox.set_seed(seed)
+        turtle.toybox.set_seed(self.seed)
         obs = env.reset()
         if withstate: turtle.toybox.write_state_json(withstate)
 
-        model_path = 'agents/data/BreakoutToyboxNoFrameskip-v4.regress.model'
-        model = getModel(env, family, seed, model_path)
+        model = getModel(env, family, self.seed, model_path)
 
         self.model = model
         self.env = env
