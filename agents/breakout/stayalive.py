@@ -1,7 +1,7 @@
 from . import *
 
 
-class StayAlive(Agent):
+class StayAlive(BreakoutAgent):
     """The simplest agent. Reacts deterministically to the x position of the ball."""
 
     def get_action(self):

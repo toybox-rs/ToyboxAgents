@@ -2,7 +2,7 @@ from . import *
 from random import random, seed
 
 
-class VelocityEstimate(Agent):
+class VelocityEstimate(BreakoutAgent):
     """
     The paddle does not use the position of the ball to compute the move but estimates where to move based on the
     its velocity. Once paddle computes where to go, it commits to it. While the paddle starts moving,
@@ -14,10 +14,10 @@ class VelocityEstimate(Agent):
     the agent assumes that the velocity does not change, but it does once it reaches the orange layer
     """
 
-    def __init__(self, toybox: Toybox):
+    def __init__(self,  *args, **kwargs):
         self.prev_bally = None
         self.score = 0
-        super().__init__(toybox)
+        super().__init__( *args, **kwargs)
         seed(self.seed)
         self.ball_prevY = None
         self.ball_prevX = None

@@ -2,15 +2,15 @@ from . import *
 from random import random, seed
 
 
-class MoveOnlyFalling(Agent):
+class MoveOnlyFalling(BreakoutAgent):
     """
     Try to stay alive when the (1st) ball is moving downward.
 
     Potential Failure: when the ball bounces in an acute angle, the agent needs to move while the ball is moving upwards
     """
 
-    def __init__(self, toybox: Toybox):
-        super().__init__(toybox)
+    def __init__(*args, **kwargs):
+        super().__init__(*args, **kwargs)
         seed(self.seed)
         self.ball_moving_down = None
         self.ball_prevY = None
