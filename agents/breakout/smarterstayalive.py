@@ -4,7 +4,8 @@ import random
 class SmarterStayAlive(BreakoutAgent):
     """Still simple, but should toggle less -- reacts to the horizontal direction of the ball. Moves randomly when the paddle is aligned under a tunnel."""
 
-    def __init__(self,  *args, **kwargs):
+
+    def __init__(self, *args, **kwargs):
         self.prev_ballx = None
         self.jitter = 0.5
         super().__init__(*args, **kwargs)
