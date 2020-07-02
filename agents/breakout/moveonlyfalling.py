@@ -16,6 +16,8 @@ class MoveOnlyFalling(BreakoutAgent):
         self.ball_prevY = None
 
     def get_action(self):
+        input = Input()
+        input.button1 = True
         with breakout.BreakoutIntervention(self.toybox) as intervention:
             game = intervention.game
             bally = game.balls[0].position.y

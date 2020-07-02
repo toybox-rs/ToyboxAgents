@@ -14,6 +14,8 @@ class StayAliveJitter(BreakoutAgent):
         seed(self.seed)
 
     def get_action(self, intervention=None):
+        input = Input()
+        input.button1 = True
         with (intervention or breakout.BreakoutIntervention(self.toybox)) as intervention:
             game = intervention.game
             if len(game.balls) == 0: return input

@@ -5,6 +5,8 @@ class StayAlive(BreakoutAgent):
     """The simplest agent. Reacts deterministically to the x position of the ball."""
 
     def get_action(self):
+        input = Input()
+        input.button1 = True
         with breakout.BreakoutIntervention(self.toybox) as intervention:
             game = intervention.game
             ballx = game.balls[0].position.x

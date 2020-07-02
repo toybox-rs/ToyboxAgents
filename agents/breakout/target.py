@@ -16,6 +16,7 @@ class Target(StayAliveJitter):
 
     def get_action(self):
         input = Input()
+        input.button1 = True
         with breakout.BreakoutIntervention(self.toybox) as intervention:
             game = intervention.game
             # We missed in the previous round; game over.

@@ -32,6 +32,8 @@ class VelocityEstimate(BreakoutAgent):
         pass
 
     def get_action(self):
+        input = Input()
+        input.button1 = True
         with breakout.BreakoutIntervention(self.toybox) as intervention:
             game = intervention.game
 
