@@ -331,7 +331,7 @@ class Experiment(object):
           # This happens when an intervention causes a reset; skip it.
           if len(sapairs) < self.outcome_var.minwindow: continue
           # generate control
-          control_states = self.run_control(game, intervention, prop, after, s1)
+          # control_states = self.run_control(game, intervention, prop, after, s1)
           intervened_outcome = self.counterfactual.outcomep(sapairs)
           # s2_ = game.decode(intervention,  self.agent.states[-1].encode(), game)
           if intervened_outcome:

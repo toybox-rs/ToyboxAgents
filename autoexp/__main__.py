@@ -8,7 +8,7 @@ import os
 import sys
 
 from timeit import default_timer as timer
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Set
 
 
 from ctoybox import Input, Toybox
@@ -17,9 +17,11 @@ from toybox.interventions import Game
 
 import autoexp.outcomes as outcomes
 import agents
+import autoexp
 
 from autoexp import learn_models, load_states, find_outcome_window
 from autoexp.driver import Experiment
+from autoexp.vars.composite import Composite
 
 parser = argparse.ArgumentParser(description='Search for explanations')
 
@@ -178,6 +180,11 @@ else:
 
 # Now run the experiment
 agent.reset(seed=args.seed)
+
+composite_vars : Set[Composite] = []
+if args.vars:
+  importlib.import_module('.vars.composite.' + args.game, package='autoexp')
+  composite_vars = set([eval('autoexp.vars.composite.' + args.game + '.' + v)(args.model) for v in args.vars])
 exp = Experiment(
   game_name=args.game,
   seed=args.seed,
@@ -185,10 +192,11 @@ exp = Experiment(
   outcome_var=outcome,
   counterfactual=counterfactual,
   atomic_constraints=set(args.constraints),
-  composite_vars=set([eval(v)() for v in args.vars]),
+  composite_vars=composite_vars,
   trace=trace,
   agent=agent, 
-  outdir=args.outdir
+  outdir=args.outdir,
+  discretization_cutoff=3
 )
 num_mut_pts = len(exp.mutation_points)
 start = timer()
