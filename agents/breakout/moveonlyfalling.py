@@ -9,7 +9,7 @@ class MoveOnlyFalling(BreakoutAgent):
     Potential Failure: when the ball bounces in an acute angle, the agent needs to move while the ball is moving upwards
     """
 
-    def __init__(*args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         seed(self.seed)
         self.ball_moving_down = None
