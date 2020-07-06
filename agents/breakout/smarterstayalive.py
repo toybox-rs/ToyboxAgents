@@ -4,6 +4,7 @@ import random
 class SmarterStayAlive(BreakoutAgent):
     """Still simple, but should toggle less -- reacts to the horizontal direction of the ball. Moves randomly when the paddle is aligned under a tunnel."""
 
+
     def __init__(self, *args, **kwargs):
         self.prev_ballx = None
         self.jitter = 0.5
@@ -11,8 +12,6 @@ class SmarterStayAlive(BreakoutAgent):
 
     def get_action(self):
         input = Input()
-        input.button1 = True
-
         with breakout.BreakoutIntervention(self.toybox) as intervention:
             game = intervention.game
             ballx = game.balls[0].position.x
