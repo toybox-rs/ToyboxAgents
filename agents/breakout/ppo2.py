@@ -67,9 +67,11 @@ class PPO2(BreakoutAgent):
     def get_action(self):
         action = self.model.step(self.obs)[0]
         obs, _, done, info = self.env.step(action)
+        assert type(done) is list and len(done) == 1
+        done = done[0]
         self.obs = obs
         self.done = done
         ale_action = self.toybox.get_legal_action_set()[action[0]]
         # Frameskip workaround
         self.toybox.write_state_json(self.turtle.toybox.state_to_json())
-        return int(ale_action) if not all(done) else None
+        return int(ale_action) if not done else None

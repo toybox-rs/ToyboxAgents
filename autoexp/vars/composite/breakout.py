@@ -43,7 +43,9 @@ class XDistanceBallPaddle(Composite):
     ]
     
   def get(self, g: Game):
-    return abs(g.balls[0].position.x - g.paddle.position.x)
+    if len(g.balls):
+      return abs(g.balls[0].position.x - g.paddle.position.x)
+    else: return -1
 
   def sample(self, g: Game):
     before = self.get(g)

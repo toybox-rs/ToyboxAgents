@@ -72,11 +72,15 @@ parser.add_argument('--constraints',
   help='The constraints we want to apply to the atomic attributes.')
 parser.add_argument('--record_json',
   default=False,
-  action='store_true')
+  action='store_true',
+  help='Flag that, when used, records the state json for every experiment.')
 parser.add_argument('--outdir',
   required=True,
-  help='Where to store the logged experiment data.'
-)
+  help='Where to store the logged experiment data.')
+parser.add_argument('--learnvarsonly', 
+  action='store_true',
+  help='Only learn empirical probability distributions for the composite variables.'
+  )
 
 args = parser.parse_args()
 
@@ -99,14 +103,25 @@ for term in args.agent[1:]:
     arglist.append(term)
 agent = eval(agent_mod + '.' + args.agent[0])(tb, *arglist, seed=args.seed, **kwargs)
 
+composite_vars : Set[Composite] = set()
+if args.vars:
+  importlib.import_module('.vars.composite.' + args.game, package='autoexp')
+  composite_vars = set([eval('autoexp.vars.composite.' + args.game + '.' + v)(args.model) for v in args.vars])
 
 if args.datadir: 
   print('Learning models for {} on {} from {}'.format(str(agent), args.game, args.datadir), flush=True)
   training_states = []
   for d in args.datadir:
-    print('Loading states from', d)
+    print('Loading states from', d, flush=True)
     training_states.extend(load_states(d, args.game))
-  learn_models(training_states, args.model, args.game)
+  if not args.learnvarsonly:
+    print('Learning marginals for atomic attributes.', flush=True)
+    learn_models(training_states, args.model, args.game)
+  for var in composite_vars:
+    print('Learning marginal for', str(var), flush=True)
+    var.make_models(args.model, training_states)
+
+assert False
 
 
 trace: Optional[List[Tuple[Game, str]]] = None
@@ -181,10 +196,6 @@ else:
 # Now run the experiment
 agent.reset(seed=args.seed)
 
-composite_vars : Set[Composite] = []
-if args.vars:
-  importlib.import_module('.vars.composite.' + args.game, package='autoexp')
-  composite_vars = set([eval('autoexp.vars.composite.' + args.game + '.' + v)(args.model) for v in args.vars])
 exp = Experiment(
   game_name=args.game,
   seed=args.seed,
