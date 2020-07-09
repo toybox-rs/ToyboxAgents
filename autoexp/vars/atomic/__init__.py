@@ -13,15 +13,19 @@ class Atomic(Var):
   def get(self, g: Game):
     return get_property(g, self.name)
 
+  def set(self, v: Any, g: Game):
+    get_property(g, self.name, setval=v)
+
   @staticmethod
   def excludep(prop: str, pattern: str) -> bool:
     return bool(re.match(pattern, prop))
   
-  def sample(self, state: Game) -> Tuple[Any, Game, Any]:
+  def sample(self, state: Game) -> Tuple[Any, Any]:
     before = get_property(state, self.name)
     intervened_state = state.sample(self.name)
+    assert intervened_state == state, 'Sampling atomic vars should mutate them.'
     after = get_property(intervened_state, self.name)
-    return before, intervened_state, after
+    return before, after
 
 def get_core_attributes(g: BaseMixin, prefix='') -> List[str]:
   """Returns a flat list of all possible mutation points."""

@@ -121,9 +121,6 @@ if args.datadir:
     print('Learning marginal for', str(var), flush=True)
     var.make_models(args.model, training_states)
 
-assert False
-
-
 trace: Optional[List[Tuple[Game, str]]] = None
 
 if args.outcome_dir:

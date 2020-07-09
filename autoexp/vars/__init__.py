@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Tuple
 
 from toybox.interventions import Game
 
@@ -22,5 +22,8 @@ class Var(ABC):
   def get(self, state: Game) -> Any: pass
 
   @abstractmethod
-  def sample(self, g:Game) -> Any: pass
+  def set(self, v: Any, state:Game): pass
+
+  @abstractmethod
+  def sample(self, g:Game) -> Tuple[Any, Any]: pass
 

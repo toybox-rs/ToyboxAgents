@@ -90,6 +90,7 @@ class Trace(object):
         return [(game.decode(i, t.encode(), game), a) for t, a in self._trace]
 
   def get_intervention_state(self, tb: Toybox, timelag: int) -> Game:
+    """Returns a fresh copy of the intervention state."""
     game = get_state_object(self.game_name)
     intervener = get_intervener(self.game_name)(tb, modelmod=self.modelmod)
     return game.decode(intervener, self.get_state_trace()[timelag].encode(), game)
@@ -175,7 +176,6 @@ class Experiment(object):
     for var in self.composite_vars:
       var.make_models(self.modelmod, data)
 
-
   def get_intervention_state(self, tb: Toybox):
     return self.trace.get_intervention_state(tb, self.timelag)
 
@@ -195,10 +195,10 @@ class Experiment(object):
 
   def generate_intervention(self, tb: Toybox) -> Tuple[Game, Var, Any]:
     assert self.timelag < 0
-    intervention_state : Game = self.get_intervention_state(tb)
 
     for var, tried in self.interventions.items():
-      before, intervened_state, after = var.sample(intervention_state)
+      intervention_state : Game = self.get_intervention_state(tb)
+      before, after = var.sample(intervention_state)
 
       if type(after) is float:
         if all([math.isclose(after, val) for val in tried]):
@@ -207,7 +207,7 @@ class Experiment(object):
           # allow samples from the tails
           print('Setting {} to {} from {}'.format(var, after, before))
           self.interventions[var].append(after)
-          return (intervened_state, var, after)
+          return (intervention_state, var, after)
         elif len(tried) > self.discretization_cutoff:
           # h = (3.49 * sample_var) / (cube root n)
           n = len(tried)
@@ -229,28 +229,29 @@ class Experiment(object):
               if len(elts) == 0:
                 print('Setting {} to {} from {}'.format(var, after, before))
                 self.interventions[var].append(after)
-                return (intervened_state, var, after)
+                return (intervention_state, var, after)
             low = high
             high = high + h
               
       elif after not in tried and after != before:
         self.interventions[var].append(after)
         print('Setting {} to {} from {}'.format(var, after, before))
-        return (intervened_state, var, after)
+        return (intervention_state, var, after)
     
     # Select a new mutation point
     prop : Var = sample(list(self.mutation_points.difference(set(self.interventions.keys()))))
     counter = self.diff_trials
     
     while counter > 0:
-      before, state, after = prop.sample(intervention_state)
+      intervention_state = self.get_intervention_state(tb)
+      before, after = prop.sample(intervention_state)
       if before != after: 
         print('Setting {} to {} from {}'.format(prop, after, before))
         if prop in self.interventions:
           self.interventions[prop].append(after)
         else:
           self.interventions[prop] = [after]
-        return state, prop, after
+        return intervention_state, prop, after
       counter -= 1
     
     raise LikelyConstantError(prop, after, self.diff_trials)
@@ -331,7 +332,7 @@ class Experiment(object):
           # This happens when an intervention causes a reset; skip it.
           if len(sapairs) < self.outcome_var.minwindow: continue
           # generate control
-          # control_states = self.run_control(game, intervention, prop, after, s1)
+          control_states = self.run_control(game, intervention, prop, after, s1)
           intervened_outcome = self.counterfactual.outcomep(sapairs)
           # s2_ = game.decode(intervention,  self.agent.states[-1].encode(), game)
           if intervened_outcome:

@@ -1,5 +1,5 @@
 from toybox.interventions import Game
-from typing import List, Any
+from typing import List, Any, Union
 
 from toybox.interventions.core import distr
 
@@ -15,7 +15,9 @@ class Composite(Var):
 
   def __init__(self, name, modelmod):
     super().__init__(name, modelmod)
+    self.modelmod = modelmod
     self.atomicvars = []
+    self.compositevars = []
 
   def make_models(self, modelmod, data: List[Game]):
     outdir = modelmod.replace('.', '/') + os.sep
@@ -28,3 +30,17 @@ class Composite(Var):
   def _sample_var(self, ivar_name) -> Any:
     ivar = importlib.import_module(self.modelmod + '.' + query_hack(ivar_name))
     return ivar.sample()
+
+  def _get_atomic_from_composite(self) -> List[str]:
+    retval = [v for v in self.atomicvars]
+    for v in self.compositevars:
+      retval.extend(v._get_atomic_from_composite())
+    return retval
+
+  def _get_composite(self, name: Union[str, type]) -> Var:
+    for var in self.compositevars:
+      if type(name) == str and var.name == name:
+        return var
+      if type(name) == type and isinstance(var, name):
+        return var      
+    raise ValueError('No composite var named {} found in {}\'s composite vars.'.format(name, self.name))
