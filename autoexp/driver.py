@@ -205,7 +205,7 @@ class Experiment(object):
           continue
         elif after < min(tried) or after > max(tried):
           # allow samples from the tails
-          print('Setting {} to {} from {}'.format(var, after, before))
+          print('Setting {} to {} from {} (extrema were [{}, {}]'.format(var, after, before, min(tried), max(tried)))
           self.interventions[var].append(after)
           return (intervention_state, var, after)
         elif len(tried) > self.discretization_cutoff:
@@ -227,7 +227,7 @@ class Experiment(object):
               #   break
               # else:
               if len(elts) == 0:
-                print('Setting {} to {} from {}'.format(var, after, before))
+                print('Setting {} to {} from {} (bucket size {}; extrema are [{}, {}])'.format(var, after, before, h, min(tried), max(tried)))
                 self.interventions[var].append(after)
                 return (intervention_state, var, after)
             low = high

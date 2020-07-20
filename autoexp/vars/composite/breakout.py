@@ -1,4 +1,4 @@
-from . import Composite
+from . import Composite, Atomic
 from ctoybox import Toybox
 from toybox.interventions import Game
 from toybox.interventions.core import distr, get_property
@@ -31,13 +31,20 @@ class TopRowColor(Composite):
     for varname in self.atomicvars:
       get_property(g, varname, setval=red if varname.endswith('r') else green if varname.endswith('g') else blue)
 
+  def make_models(self, d): pass
+
   def sample(self, g:Game):
     before = self.get(g)
-    after = int(self._sample_composite())
-    red = (after & 0xff0000) >> 16
-    green = (after & 0x00ff00) >> 8
-    blue = after & 0x0000ff
+    # after = int(self._sample_composite())
+    # red = (after & 0xff0000) >> 16
+    # green = (after & 0x00ff00) >> 8
+    # blue = after & 0x0000ff
+    # self.set((red, green, blue), g)
+    red = Atomic(self.modelmod, 'bricks[0].color.r').sample(g)
+    green = Atomic(self.modelmod, 'bricks[0].color.g').sample(g)
+    blue = Atomic(self.modelmod, 'bricks[0].color.b').sample(g)
     self.set((red, green, blue), g)
+    after = self.get(g)
     return before, after
 
 
@@ -157,7 +164,7 @@ def L2DistanceBallPaddle(Composite):
     return (xdist.get()**2 + ydist.get()**2)**(1/2)
 
   def set(self, v:int, g:Game):
-    random.suffle(self.compositevars)
+    random.shuffle(self.compositevars)
     ivar_obj, dvar_obj = self.compositevars
     # This will set the ivar in the process
     _, _, ivar = ivar_obj.sample(g)
