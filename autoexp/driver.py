@@ -34,7 +34,7 @@ class MalformedInterventionError(Exception):
   
   def __init__(self, prop, diff):
     assert len(diff) > 0
-    super().__init__('{} overrode keys: {}'.format(prop, ','.join([t[0] for t in diff])))
+    super().__init__('\tWashed out; {} overrode keys: {}'.format(prop, ','.join([t[0] for t in diff if not t[0]==prop])))
     self.diff = diff
     self.prop = prop
 
@@ -42,7 +42,7 @@ class MalformedInterventionError(Exception):
 class ConditionalIntervention(Exception):
 
   def __init__(self, prop, diff1, diff2):
-    super().__init__('Intervention {} changed other keys: {}'.format(prop, ', '.join([t[0] for t in diff2])))
+    super().__init__('\tIntervention {} changed other keys: {}'.format(prop, ', '.join([t[0] for t in diff2 if not t[0] == prop])))
     self.to_remove = diff1
     self.changed = diff2
     self.prop = prop
@@ -77,7 +77,7 @@ class Trace(object):
     game = get_state_object(self.game_name)
     intervener = get_intervener(self.game_name)
     with Toybox(self.game_name, seed=self.seed) as tb:
-      with intervener(tb, modelmod=self.modelmod) as i:
+      with intervener(tb, modelmod=self.modelmod, eq_mode=SetEq) as i:
         # make fresh objects
         return [game.decode(i, t[0].encode(), game) for t in self._trace]
 
@@ -85,14 +85,14 @@ class Trace(object):
     game = get_state_object(self.game_name)
     intervener = get_intervener(self.game_name)
     with Toybox(self.game_name, seed=self.seed) as tb:
-      with intervener(tb, modelmod=self.modelmod) as i:
+      with intervener(tb, modelmod=self.modelmod, eq_mode=SetEq) as i:
         # make fresh objects
         return [(game.decode(i, t.encode(), game), a) for t, a in self._trace]
 
   def get_intervention_state(self, tb: Toybox, timelag: int) -> Game:
     """Returns a fresh copy of the intervention state."""
     game = get_state_object(self.game_name)
-    intervener = get_intervener(self.game_name)(tb, modelmod=self.modelmod)
+    intervener = get_intervener(self.game_name)(tb, modelmod=self.modelmod, eq_mode=SetEq)
     return game.decode(intervener, self.get_state_trace()[timelag].encode(), game)
 
 
@@ -167,7 +167,7 @@ class Experiment(object):
           for f in sorted(os.listdir(trial))[data_range]:
             if f.endswith('json'):
               with open(trial + os.sep + f, 'r') as state:
-                state = game.decode(intervener(tb), json.load(state), game)
+                state = game.decode(intervener(tb, eq_mode=SetEq), json.load(state), game)
               data.append(state) 
 
         # compute distributions for core variables
@@ -257,39 +257,44 @@ class Experiment(object):
     raise LikelyConstantError(prop, after, self.diff_trials)
 
 
-  # def check_unconditional(self, prop, s1: Game, s1_: Game, s2: Game, s2_: Game):    
-  #   diff1: SetEq = s1 == s1_
-  #   diff2: SetEq = s2 == s2_
+  def check_unconditional(self, prop, s1: Game, s1_: Game, s2: Game, s2_: Game):    
+    diff1: SetEq = s1 == s1_
+    diff2: SetEq = s2 == s2_
 
-  #   #print('check_unconditional: ', diff1, diff2)
 
-  #   if len(diff2) < len(diff1): 
-  #     print('Malformed Intervention\ndiff1:', diff1, '\tdiff2:', diff2)
-  #     raise MalformedInterventionError(prop, diff1.difference(diff2))
+    if len(diff2) < len(diff1): 
+      # print('Washed out Intervention\ndiff1:', diff1, '\tdiff2:', diff2)
+      raise MalformedInterventionError(prop, diff1.difference(diff2))
     
-  #   elif len(diff2) > len(diff1):
-  #     print('Conditional Intervention\ndiff1:', diff1, '\tdiff2:', diff2)
-  #     raise ConditionalIntervention(prop, diff1.differs, diff2.difference(diff1))   
+    elif len(diff2) > len(diff1):
+      # print('Conditional Intervention\ndiff1:', diff1, '\tdiff2:', diff2)
+      raise ConditionalIntervention(prop, diff1.differs, diff2.difference(diff1))   
 
-  #   return diff1, diff2
+    # print('check_unconditional: ', diff1, diff2)
+
+    return diff1, diff2
 
 
-  def run_control(self, game, intervention, prop, after, control_state) -> List[Game]:
+  def run_control(self, game, intervention, prop, after, control_state, record=False) -> List[Game]:
 
-    d = self.outdir + os.sep + 'control' + os.sep + str(prop) + os.sep + str(after)
-    os.makedirs(d, exist_ok=True)
-    f = d + os.sep + self.agent.__class__.__name__
+    if record:
+      d = self.outdir + os.sep + 'control' + os.sep + str(prop) + os.sep + str(after)
+      os.makedirs(d, exist_ok=True)
+      f = d + os.sep + self.agent.__class__.__name__
     states = []
 
     with Toybox(self.game_name, seed=self.seed, withstate=control_state.encode()) as tb:
-      with open(f + '00001.json', 'w') as js:
-        json.dump(tb.state_to_json(), js)
-      tb.save_frame_image(f + '00001.png')
+      if record:
+        with open(f + '00001.json', 'w') as js:
+          json.dump(tb.state_to_json(), js)
+        tb.save_frame_image(f + '00001.png')
 
       for i, action in enumerate(self.agent.actions, start=2):
-        with open(f + str(i).zfill(5) + '.json' , 'w') as js:
-          json.dump(tb.state_to_json(), js)
-        tb.save_frame_image(f + str(i).zfill(5) + '.png')
+        if record:
+          with open(f + str(i).zfill(5) + '.json' , 'w') as js:
+            json.dump(tb.state_to_json(), js)
+          tb.save_frame_image(f + str(i).zfill(5) + '.png')
+
         if isinstance(action, Input):
           tb.apply_action(action)
         elif type(action) == int:
@@ -298,6 +303,7 @@ class Experiment(object):
           pass
         else:
           raise ValueError('Unknown action type:', type(action))
+
         states.append(game.decode(intervention, tb.state_to_json(), game))
     return states
 
@@ -316,11 +322,12 @@ class Experiment(object):
 
         game         = get_state_object(self.game_name)
         intervention = get_intervener(self.game_name)(self.agent.toybox, self.game_name, eq_mode=SetEq)
-
         s1           = game.decode(intervention, self.get_intervention_state(intervention.toybox).encode(), game)
 
         try:
           s1_, prop, after = self.generate_intervention(intervention.toybox)
+          prop.set(after, s1_)
+          assert s1 != s1_
           intervention_dir = self.outdir + os.sep + 'intervened' + os.sep + str(prop) + os.sep + str(after)
           self.agent.reset()  
           self.agent.toybox.write_state_json(s1_.encode())
@@ -332,7 +339,19 @@ class Experiment(object):
           # This happens when an intervention causes a reset; skip it.
           if len(sapairs) < self.outcome_var.minwindow: continue
           # generate control
-          control_states = self.run_control(game, intervention, prop, after, s1)
+          control_states = self.run_control(game, intervention, prop, after, s1, record=True)
+          s2 = self.agent.states[1]
+          s2.intervention.eq_mode = SetEq
+          s2_ = control_states[1]
+          try:
+            self.check_unconditional(prop, s1, s1_, s2, s2_)
+          except ConditionalIntervention as err:
+            print(err)
+          except MalformedInterventionError as err:
+            print(err)
+            print('\tRemoving {} from mutation list'.format(e.prop))
+            self.mutation_points.remove(e.prop)
+            if e.prop in self.interventions: self.interventions.remove(e.prop)
           intervened_outcome = self.counterfactual.outcomep(sapairs)
           # s2_ = game.decode(intervention,  self.agent.states[-1].encode(), game)
           if intervened_outcome:

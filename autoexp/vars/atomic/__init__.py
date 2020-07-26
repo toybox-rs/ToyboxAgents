@@ -23,8 +23,8 @@ class Atomic(Var):
   def sample(self, state: Game) -> Tuple[Any, Any]:
     before = get_property(state, self.name)
     intervened_state = state.sample(self.name)
-    assert intervened_state == state, 'Sampling atomic vars should mutate them.'
     after = get_property(intervened_state, self.name)
+    # assert intervened_state != state, 'Sampling atomic vars should mutate them ({} : {} to {}).'.format(self.name, before, after)
     return before, after
 
 def get_core_attributes(g: BaseMixin, prefix='') -> List[str]:
