@@ -4,8 +4,8 @@
 ## highlighting in an IDE
 #!/bin/bash 
 #
-#SBATCH --output=/mnt/nfs/work1/jensen/etosch/autoexp/run_{agent}_{outcome_fmt}_{seed}.out
-#SBATCH -e /mnt/nfs/work1/jensen/etosch/autoexp/run_{agent}_{outcome_fmt}_{seed}.err
+#SBATCH --output=/mnt/nfs/work1/jensen/etosch/autoexp/run_{agent}_{outcome_fmt}_{deepmodel}_{seed}.out
+#SBATCH -e /mnt/nfs/work1/jensen/etosch/autoexp/run_{agent}_{outcome_fmt}_{deepmodel}_{seed}.err
 #SBATCH --time={time}
 #SBATCH --partition={partition}
 
@@ -14,7 +14,7 @@ pip install -r REQUIREMENTS.txt 1> /dev/null
 if [ "$1" = "local" ]; then 
   if [ "$2" = "learn" ]; then
     # We don't have pre-recorded data for deep agents, so we will need to run them    
-    python -m agents --agentclass {agent} --game breakout --output analysis/data/raw/{agent}/{seed} --maxsteps 2000 
+    # python -m agents --agentclass {agent} --game breakout --output analysis/data/raw/{agent}/{seed} --maxsteps 2000 
     training_data=`ls -d analysis/data/raw/{agent}/* | paste -s -d' ' -`
   fi
   python -m autoexp \
@@ -29,10 +29,10 @@ if [ "$1" = "local" ]; then
     --outdir exp/{model_path}/{outcome_fmt}/{seed} \
     --datadir $training_data \
     --constraints 'bricks\[.*?\].*' \
-    1> run_{agent}_{outcome_fmt}_{seed}.out 2> run_{agent}_{outcome_fmt}_{seed}.err
+    1> run_{agent}_{outcome_fmt}_{model_path}_{seed}.out 2> run_{agent}_{outcome_fmt}_{model_path}_{seed}.err
 elif [ "$1" = "swarm" ]; then
   if [ "$2" = "learn" ]; then 
-    python -m agents --agentclass {agent} --game breakout --output $WORK1/ToyboxAgents/{agent}/{seed} --maxsteps 2000 
+    # python -m agents --agentclass {agent} --game breakout --output $WORK1/ToyboxAgents/{agent}/{seed} --maxsteps 2000 
     training_data=`ls -d $WORK1/ToyboxAgents/{agent}/* | paste -s -d' '`
   fi
   python -m autoexp breakout \
@@ -40,7 +40,7 @@ elif [ "$1" = "swarm" ]; then
     --agent {agent} \
     --outcome {outcome} \
     --counterfactual {counterfactual} \
-    --outdir $WORK1/autoexp/exp/{agent}/{outcome_fmt}/{seed} \
+    --outdir $WORK1/autoexp/exp/{agent}/{outcome_fmt}/{model_path}/{seed} \
     --seed {seed} \
     --maxsteps 2000 \
     --window 64 \

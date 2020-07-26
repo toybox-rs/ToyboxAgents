@@ -67,7 +67,6 @@ class PPO2(BreakoutAgent):
     def get_action(self):
         action = self.model.step(self.obs)[0]
         obs, _, done, info = self.env.step(action)
-        assert type(done) is list and len(done) == 1
         done = done[0]
         self.obs = obs
         self.done = done

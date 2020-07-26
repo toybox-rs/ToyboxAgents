@@ -4,8 +4,8 @@
 ## highlighting in an IDE
 #!/bin/bash 
 #
-#SBATCH --output=/mnt/nfs/work1/jensen/etosch/autoexp/run_{agent}_{outcome_fmt}_{seed}.out
-#SBATCH -e /mnt/nfs/work1/jensen/etosch/autoexp/run_{agent}_{outcome_fmt}_{seed}.err
+#SBATCH --output=/mnt/nfs/scratch1/etosch/autoexp/run_{agent}_{outcome_fmt}_{seed}.out
+#SBATCH -e /mnt/nfs/scratch1/etosch/autoexp/run_{agent}_{outcome_fmt}_{seed}.err
 #SBATCH --time={time}
 #SBATCH --partition={partition}
 
@@ -39,7 +39,7 @@ elif [ "$1" = "swarm" ]; then
     --agent {agent} \
     --outcome {outcome} \
     --counterfactual {counterfactual} \
-    --outdir $WORK1/autoexp/exp/{agent}/{outcome_fmt}/{seed} \
+    --outdir /mnt/nfs/scratch1/etosch/autoexp/exp/{agent}/{outcome_fmt}/{seed} \
     --seed {seed} \
     --maxsteps 2000 \
     --window 64 \

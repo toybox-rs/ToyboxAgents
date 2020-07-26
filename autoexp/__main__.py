@@ -109,23 +109,23 @@ if args.vars:
   composite_vars = set([eval('autoexp.vars.composite.' + args.game + '.' + v)(args.model) for v in args.vars])
 
 if args.datadir: 
-  print('Learning models for {} on {} from {}'.format(str(agent), args.game, args.datadir), flush=True)
+  print('Learning models for {} on {} from {}'.format(str(agent), args.game, args.datadir))
   training_states = []
   for d in args.datadir:
-    print('Loading states from', d, flush=True)
+    print('Loading states from', d)
     training_states.extend(load_states(d, args.game))
   if not args.learnvarsonly:
-    print('Learning marginals for atomic attributes.', flush=True)
+    print('Learning marginals for atomic attributes.')
     learn_models(training_states, args.model, args.game)
   for var in composite_vars:
-    print('Learning marginal for', str(var), flush=True)
+    print('Learning marginal for', str(var))
     var.make_models(args.model, training_states)
 
 trace: Optional[List[Tuple[Game, str]]] = None
 
 if args.outcome_dir:
   # load up the outcome data 
-  print('Loading {} trace for {} from {}'.format(outcome.__name__, agent.__name__, args.outcome_dir), flush=True)
+  print('Loading {} trace for {} from {}'.format(outcome.__name__, agent.__name__, args.outcome_dir))
   trace = load_states(args.outcome_dir, args.game)
 else:
   # search for the outcome under normal gameplay
@@ -148,7 +148,7 @@ else:
       counterfactual_sapairs = find_outcome_window(counterfactual, states, args.window)
     except outcomes.OutcomeException as e:
       print(e, file=sys.stderr)
-      print('\tPredicate applied over time steps [{}, {}]'.format(len(agent.states) - args.window - 1, len(agent.states) - 1), file=sys.stderr, flush=True)
+      print('\tPredicate applied over time steps [{}, {}]'.format(len(agent.states) - args.window - 1, len(agent.states) - 1), file=sys.stderr)
       outcome_sapairs, counterfactual_sapairs = [], []
             
     
@@ -157,8 +157,7 @@ else:
           outcome.__class__.__name__, 
           agent.__class__.__name__, 
           max(step - args.window, 0), 
-          step),
-        flush=True)
+          step))
       # Want to make sure we don't pick an outcome too early in the game.
       if len(outcome_sapairs) >= 2 * outcome.minwindow:
         Toybox(args.game, withstate=outcome_sapairs[0][0].encode()).save_frame_image('outcome_{}_{}_begin.png'.format(str(outcome), str(agent)))
@@ -172,8 +171,7 @@ else:
           counterfactual.__class__.__name__, 
           agent.__class__.__name__, 
           max(step - args.window, 0), 
-          step),
-        flush=True)
+          step))
       Toybox(args.game, withstate=counterfactual_sapairs[0][0].encode()).save_frame_image('counterfactual_{}_{}_begin.png'.format(str(counterfactual), str(agent)))
       Toybox(args.game, withstate=counterfactual_sapairs[-1][0].encode()).save_frame_image('counterfactual_{}_{}_end.png'.format(str(counterfactual), str(agent)))
       found_c = True

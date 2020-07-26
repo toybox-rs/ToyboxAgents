@@ -29,8 +29,8 @@ parser.add_argument('--type',
 )
 parser.add_argument('--time', default='0-11:59')
 parser.add_argument('--partition', default='defq')
-parser.add_argument('--model_root', default='models.breakout')
-parser.add_argument('--model_path')
+parser.add_argument('--model_root', default='models.breakout', help='The root directory for this game\'s agents\' models. Default is models.breakout (expected to be in ./models/breakout). Program expects a separate module for each agent.')
+parser.add_argument('--model_path', default='/mnt/nfs/work1/jensen/etosch/issta', help='The root directory for where deep agent models live.')
 
 
 args = parser.parse_args()
@@ -79,7 +79,8 @@ with open(template_source, 'r') as f:
                   seed=seed,
                   outcome=outcome,
                   counterfactual=counterfactuals[outcome],
-                  model_path=args.model_path + os.sep + model
+                  model_path=args.model_path + os.sep + model,
+                  deepmodel=model
                  )
-              with open(os.sep.join(['scripts', 'experiments', '_'.join(['run', agent, outcome_fmt, str(seed)]) + '.sh']), 'w') as out:
+              with open(os.sep.join(['scripts', 'experiments', '_'.join(['run', agent, outcome_fmt, model, str(seed)]) + '.sh']), 'w') as out:
                 out.write(instance)
