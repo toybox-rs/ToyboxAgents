@@ -116,6 +116,8 @@ class Agent(ABC):
     def get_action(self) -> Input: pass
 
     def reset(self, seed=None):
+        # Should we also reset/call new game for toybox in here?
+        self.toybox.new_game()
         self.states = []
         self.actions = []
         self._frame_counter = 0
@@ -145,6 +147,10 @@ class Agent(ABC):
     def stopping_condition(self, maxsteps, *args, **kwargs):
         return self.toybox.game_over() or self._frame_counter > maxsteps 
 
+    
+    def set_start_state(self, startstate):
+        self.toybox.write_state_json(startstate.encode())
+
 
     def play(self, path=None, maxsteps=2000, write_json_to_file=True, save_states=False, startstate=None):
         # set the signal handler to save actions when we are interrupted.
@@ -152,7 +158,7 @@ class Agent(ABC):
         signal.signal(signal.SIGTERM, self.kill_and_record(path))
         
         if path: os.makedirs(path, exist_ok=True)
-        if startstate: self.toybox.write_state_json(startstate.encode())
+        if startstate: self.set_start_state(startstate)
         self.write_data(path, write_json_to_file, save_states)
 
         maxsteps = abs(maxsteps) 

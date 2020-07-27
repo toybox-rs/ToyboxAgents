@@ -330,7 +330,6 @@ class Experiment(object):
           assert s1 != s1_
           intervention_dir = self.outdir + os.sep + 'intervened' + os.sep + str(prop) + os.sep + str(after)
           self.agent.reset()  
-          self.agent.toybox.write_state_json(s1_.encode())
           self.agent.play(intervention_dir, maxsteps=t, save_states=True, startstate=s1_)
           assert self.agent.states, (self.agent.toybox.game_over(), t, prop, self.agent.done if hasattr(self.agent, 'done') else None)
           assert self.agent.actions
@@ -339,8 +338,13 @@ class Experiment(object):
           # This happens when an intervention causes a reset; skip it.
           if len(sapairs) < self.outcome_var.minwindow: continue
           # generate control
-          control_states = self.run_control(game, intervention, prop, after, s1, record=True)
+          control_states = self.run_control(game, intervention, prop, after, s1, record=True)          
           s2 = self.agent.states[1]
+          
+          # If s2 is None, then the intervention failed immediately and this is a byproduct of the 
+          # environment dynamics. Skip it.
+          if s2 is None: continue
+
           s2.intervention.eq_mode = SetEq
           s2_ = control_states[1]
           try:
@@ -352,12 +356,13 @@ class Experiment(object):
             print('\tRemoving {} from mutation list'.format(e.prop))
             self.mutation_points.remove(e.prop)
             if e.prop in self.interventions: self.interventions.remove(e.prop)
-          intervened_outcome = self.counterfactual.outcomep(sapairs)
+          counterfactual_outcome = self.counterfactual.outcomep(sapairs)
+          factual_outcome = self.outcome_var.outcomep(sapairs)
           # s2_ = game.decode(intervention,  self.agent.states[-1].encode(), game)
-          if intervened_outcome:
+          if counterfactual_outcome and not factual_outcome:
             print('Original and intervened outcome differ for property', prop)
             print(tabulate([(var, len(items)) for (var, items) in self.interventions.items()], headers=['Property', 'Count']))
-            return s1_, intervened_outcome          
+            return s1_, counterfactual_outcome
 
         except LikelyConstantError as e:
           print('\t' + str(e))

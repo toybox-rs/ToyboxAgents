@@ -4,16 +4,16 @@ from toybox.testing.envs.gym import get_turtle
 from toybox.interventions.breakout import BreakoutIntervention
 from baselines.common.vec_env.vec_frame_stack import VecFrameStack
 from baselines.common.cmd_util import make_vec_env
+
 import tensorflow as tf
+import numpy
 
 class PPO2(BreakoutAgent):
 
     def __init__(self, toybox: Toybox, *args, withstate=None, model_path='agents/data/BreakoutToyboxNoFrameskip-v4.regress.model', **kwargs):
         # The action_repeat value comes from the skip argument of 
         # MaxAndSkipEnv in atari_wrappers.py
-        # Setting this back to 1 from 4 because I think it messes up some
-        # of our reasoning.
-        super().__init__(toybox, *args, action_repeat=4, **kwargs)
+        super().__init__(toybox, *args, **kwargs)
 
         nenv = 1
         frame_stack_size = 4
@@ -23,17 +23,17 @@ class PPO2(BreakoutAgent):
  
         # Nb: OpenAI special cases acer, trpo, and deepQ.
         env = VecFrameStack(make_vec_env(env_id, env_type, nenv, self.seed), frame_stack_size)
-        turtle = get_turtle(env)
-        turtle.toybox.set_seed(self.seed)
         obs = env.reset()
-        if withstate: turtle.toybox.write_state_json(withstate)
-
-        model = getModel(env, family, self.seed, model_path)
-
-        self.model = model
-        self.env = env
-        self.turtle = turtle
         self.obs = obs
+
+        self.turtle = get_turtle(env)
+        self.turtle.toybox.set_seed(self.seed)
+        self.toybox = toybox
+        self._reset_seed(self.seed)
+        if withstate: self.turtle.toybox.write_state_json(withstate)
+
+        self.model = getModel(env, family, self.seed, model_path)
+        self.env = env
         self.done = False
         self.tfsession = tf.Session(graph=tf.Graph()).__enter__()
 
@@ -56,21 +56,32 @@ class PPO2(BreakoutAgent):
 
     def reset(self, seed=None):
         super().reset(seed=seed)
+        
         self.done = False
-        turtle = get_turtle(self.env)
-        turtle.toybox.new_game()
-        if seed: turtle.toybox.set_seed(seed)
+
+        # turtle = get_turtle(self.env)
+        # turtle.toybox.new_game()
+        self.turtle.toybox.new_game()
+        if seed: self.turtle.toybox.set_seed(seed)
+        
         self.obs = self.env.reset()
+
         self.tfsession.__del__()
         self.tfsession = tf.Session(graph=tf.Graph()).__enter__()
+
+    def set_start_state(self, startstate):
+        super().set_start_state(startstate)
+        self.turtle.toybox.write_state_json(startstate.encode())
 
     def get_action(self):
         action = self.model.step(self.obs)[0]
         obs, _, done, info = self.env.step(action)
-        assert type(done) is list and len(done) == 1
+
+        assert type(done) is numpy.ndarray and len(done) == 1, type(done)
         done = done[0]
         self.obs = obs
         self.done = done
+
         ale_action = self.toybox.get_legal_action_set()[action[0]]
         # Frameskip workaround
         self.toybox.write_state_json(self.turtle.toybox.state_to_json())

@@ -129,20 +129,23 @@ if args.outcome_dir:
   trace = load_states(args.outcome_dir, args.game)
 else:
   # search for the outcome under normal gameplay
-  tb = agent.toybox
-  tb.new_game()
+
+  # new_game is now being called in the agent.reset method
+  # tb = agent.toybox
+  # tb.new_game() 
   agent.reset(args.seed)
   
   found_o, found_c = False, False
   
-  agent.play(maxsteps=args.window, write_json_to_file=args.record_json, save_states=True)
+  agent.play(maxsteps=args.window, write_json_to_file=args.record_json, save_states=True) #, path='ppo2_stuff')
   
   step = len(agent.states)
 
-  while (not tb.game_over() and step < args.maxsteps) and (not agent.done if hasattr(agent, 'done') else True):
+  while True:
     action_window = agent.actions[-1 * args.window:]
     state_window  = agent.states[-1 * args.window:]
     states        = list(zip(state_window, action_window))
+
     try:
       outcome_sapairs        = find_outcome_window(outcome,        states, args.window)
       counterfactual_sapairs = find_outcome_window(counterfactual, states, args.window)
@@ -179,8 +182,10 @@ else:
       found_c = True
       if found_o: break
 
+    if agent.stopping_condition(args.maxsteps): break
     # advance by one step until we find the outcome and counterfactual
     agent.step('/dev/null', False, True)
+    #agent.step('ppo2_stuff', True, True)
     step += agent.action_repeat
 
   if not found_o: 

@@ -80,7 +80,7 @@ class MissedBall(Outcome):
         # at tn-1, then we have missed
         last_state = pairs[-1][0]
         pen_state = pairs[-2][0]
-        if last_state is None:
+        if last_state is None or len(pen_state.balls) == 0:
             return True
         elif len(last_state.balls) == 0:
             return len(pen_state.balls) > 0
@@ -89,7 +89,11 @@ class MissedBall(Outcome):
             pen_pad_y  = pen_state.paddle.position.y
             last_ball_y = last_state.balls[0].position.y 
             last_pad_y = last_state.paddle.position.y
-            return  pen_ball_y > pen_pad_y and last_ball_y > last_pad_y
+
+            last_lives = last_state.lives
+            pen_lives = pen_state.lives
+
+            return  (pen_ball_y > pen_pad_y and last_ball_y > last_pad_y) or last_lives < pen_lives
 
 class HitBall(Outcome):
 
