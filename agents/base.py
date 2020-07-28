@@ -148,8 +148,8 @@ class Agent(ABC):
         return self.toybox.game_over() or self._frame_counter > maxsteps 
 
     
-    def set_start_state(self, startstate):
-        self.toybox.write_state_json(startstate.encode())
+    def set_start_state(self, startstate: Union[Game, str]):
+        self.toybox.write_state_json(startstate.encode() if isinstance(startstate, Game) else startstate)
 
 
     def play(self, path=None, maxsteps=2000, write_json_to_file=True, save_states=False, startstate=None):

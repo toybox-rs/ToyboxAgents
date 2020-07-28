@@ -1,4 +1,5 @@
-from . import Composite, Atomic
+from . import Composite
+from ..atomic import Atomic
 from ctoybox import Toybox
 from toybox.interventions import Game
 from toybox.interventions.core import distr, get_property
