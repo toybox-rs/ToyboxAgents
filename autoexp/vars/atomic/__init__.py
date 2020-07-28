@@ -4,7 +4,6 @@ from toybox.interventions.base import BaseMixin
 from toybox.interventions.core import get_property, Game, Collection
 
 from .. import Var
-from ..composite import Composite
 
 import re
 
@@ -51,7 +50,7 @@ def get_core_attributes(g: BaseMixin, prefix='') -> List[str]:
   return points
 
 
-def get_core_vars(g: BaseMixin, modelmod, exclude: Set[str] = set(), derived: Set[Composite] = set()) -> List[Atomic]:
+def get_core_vars(g: BaseMixin, modelmod, exclude: Set[str] = set(), derived: Set[Var] = set()) -> List[Atomic]:
   all_points : List[str] = get_core_attributes(g)
   assert len(all_points)
   # first filter out the attributes that contribute to the derived vars

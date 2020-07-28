@@ -149,20 +149,20 @@ class BoardConfig(Composite):
     return before, after
 
 
-def L2DistanceBallPaddle(Composite):
+class L2DistanceBallPaddle(Composite):
 
   def __init__(self, modelmod):
     super().__init__('l2dist_ball_paddle', modelmod)
     self.compositevars = [
-        XDistanceBallPaddle(self.modelmod),
-        YDistanceBallPaddle(self.modelmod)
+        XDistanceBallPaddle(modelmod),
+        YDistanceBallPaddle(modelmod)
       ]
-    self.atomicvars = super()._get_atomic_from_composite()
+    self.atomicvars = self._get_atomic_from_composite()
 
   def get(self, g:Game):
-    xdist = self._get_composite(XDistanceBallPaddle)
-    ydist = self._get_composite(YDistanceBallPaddle)
-    return (xdist.get()**2 + ydist.get()**2)**(1/2)
+    xdist = self._get_composite(XDistanceBallPaddle.name)
+    ydist = self._get_composite(YDistanceBallPaddle.name)
+    return (xdist.get(g)**2 + ydist.get(g)**2)**(1/2)
 
   def set(self, v:int, g:Game):
     random.shuffle(self.compositevars)

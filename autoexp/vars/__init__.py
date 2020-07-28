@@ -7,6 +7,7 @@ class Var(ABC):
 
   def __init__(self, name, modelmod):
     self.name = name
+    self.__class__.name = name
     self.modelmod = modelmod
 
   def __str__(self):
