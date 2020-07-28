@@ -41,9 +41,9 @@ class TopRowColor(Composite):
     # green = (after & 0x00ff00) >> 8
     # blue = after & 0x0000ff
     # self.set((red, green, blue), g)
-    red = Atomic(self.modelmod, 'bricks[0].color.r').sample(g)
-    green = Atomic(self.modelmod, 'bricks[0].color.g').sample(g)
-    blue = Atomic(self.modelmod, 'bricks[0].color.b').sample(g)
+    _, red = Atomic(self.modelmod, 'bricks[0].color.r').sample(g)
+    _, green = Atomic(self.modelmod, 'bricks[0].color.g').sample(g)
+    _, blue = Atomic(self.modelmod, 'bricks[0].color.b').sample(g)
     self.set((red, green, blue), g)
     after = self.get(g)
     return before, after
@@ -168,7 +168,7 @@ class L2DistanceBallPaddle(Composite):
     random.shuffle(self.compositevars)
     ivar_obj, dvar_obj = self.compositevars
     # This will set the ivar in the process
-    _, _, ivar = ivar_obj.sample(g)
+    _, ivar = ivar_obj.sample(g)
     # Now we just need to set the dvar
     if random.random() < 0.5:
       dvar_obj.set(ivar + v, g)

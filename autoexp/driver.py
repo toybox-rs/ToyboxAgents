@@ -34,7 +34,7 @@ class MalformedInterventionError(Exception):
   
   def __init__(self, prop, diff):
     assert len(diff) > 0
-    super().__init__('\tWashed out; {} overrode keys: {}'.format(prop, ','.join([t[0] for t in diff if not t[0]==prop])))
+    super().__init__('\tWashed out; {} overridden'.format(prop))
     self.diff = diff
     self.prop = prop
 
@@ -353,9 +353,9 @@ class Experiment(object):
             print(err)
           except MalformedInterventionError as err:
             print(err)
-            print('\tRemoving {} from mutation list'.format(e.prop))
-            self.mutation_points.remove(e.prop)
-            if e.prop in self.interventions: self.interventions.remove(e.prop)
+            print('\tRemoving {} from mutation list'.format(err.prop))
+            self.mutation_points.remove(err.prop)
+            if err.prop in self.interventions: del self.interventions[err.prop]
           counterfactual_outcome = self.counterfactual.outcomep(sapairs)
           factual_outcome = self.outcome_var.outcomep(sapairs)
           # s2_ = game.decode(intervention,  self.agent.states[-1].encode(), game)
@@ -373,7 +373,7 @@ class Experiment(object):
 
       print(tabulate([(var, len(items)) for (var, items) in self.interventions.items()], headers=['Property', 'Count']))
       self.timelag = max(-1 * len(self.trace), self.timelag * 2) # will pick the less negative one
-      print('Doubling lookback to {}\n'.format(self.timelag))
+      print('Doubling lookback to {}; (trace size is {})\n'.format(self.timelag, len(self.trace)))
       self.interventions = OrderedDict()
       self.mutation_points = self.generate_mutation_points()
 

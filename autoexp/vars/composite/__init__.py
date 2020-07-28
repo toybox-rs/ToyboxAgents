@@ -22,6 +22,8 @@ class Composite(Var):
   def make_models(self, modelmod, data: List[Game]):
     outdir = modelmod.replace('.', '/') + os.sep
     distr(outdir + self.name, [self.get(d) for d in data])
+    for v in self.compositevars:
+      v.make_models(modelmod, data)
 
   def _sample_composite(self) -> Any:
     mod = importlib.import_module(self.modelmod + '.' + self.name)
@@ -42,3 +44,9 @@ class Composite(Var):
       if name == var.name:
         return var      
     raise ValueError('No composite var named {} found in {}\'s composite vars.'.format(name, self.name))
+
+  def _get_composite_dependencies(self) -> List[Var]:
+    retval = [v for v in self.compositevars]
+    for v in self.compositevars:
+      retval.extend(v._get_composite_dependencies())
+    return retval
