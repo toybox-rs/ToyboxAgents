@@ -28,22 +28,26 @@ class TopRowColor(Composite):
     return first.color.r << 16 + first.color.g << 8 + first.color.b
 
   def set(self, v: Tuple[int, int, int], g: Game):
-    red, green, blue = v
+    if type(v) is tuple:
+      red, green, blue = v
+    else:
+      red   = (v & 0xff0000) >> 16
+      green = (v & 0x00ff00) >> 8
+      blue  = v & 0x0000ff
     for varname in self.atomicvars:
       get_property(g, varname, setval=red if varname.endswith('r') else green if varname.endswith('g') else blue)
 
-  def make_models(self, d): pass
+  def make_models(self, m, d): 
+    # We use the Atomic attrs' marginals instead
+    pass
 
   def sample(self, g:Game):
     before = self.get(g)
     # after = int(self._sample_composite())
-    # red = (after & 0xff0000) >> 16
-    # green = (after & 0x00ff00) >> 8
-    # blue = after & 0x0000ff
     # self.set((red, green, blue), g)
-    _, red = Atomic(self.modelmod, 'bricks[0].color.r').sample(g)
-    _, green = Atomic(self.modelmod, 'bricks[0].color.g').sample(g)
-    _, blue = Atomic(self.modelmod, 'bricks[0].color.b').sample(g)
+    _, red   = Atomic('bricks[0].color.r', self.modelmod).sample(g)
+    _, green = Atomic('bricks[0].color.g', self.modelmod).sample(g)
+    _, blue  = Atomic('bricks[0].color.b', self.modelmod).sample(g)
     self.set((red, green, blue), g)
     after = self.get(g)
     return before, after

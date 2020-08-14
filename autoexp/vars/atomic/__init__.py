@@ -17,7 +17,11 @@ class Atomic(Var):
 
   @staticmethod
   def excludep(prop: str, pattern: str) -> bool:
-    return bool(re.match(pattern, prop))
+    try:
+      return bool(re.match(pattern, prop))
+    except Exception as e:
+      print('Error in constraint {}: {}\n\tNot excluding.'.format(prop, str(e)))
+      return False
   
   def sample(self, state: Game) -> Tuple[Any, Any]:
     before = get_property(state, self.name)

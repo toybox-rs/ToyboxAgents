@@ -3,7 +3,9 @@ Experimentation driver loop
 """
 from collections import OrderedDict
 from copy import copy
+from numpy.random import normal
 from random import choice as sample
+from random import randrange
 from tabulate import tabulate
 from typing import List, Dict, Tuple, Any, Union, Set
 
@@ -24,11 +26,10 @@ try:
 except:
   from agents.base import Agent, action_to_string, string_to_input
 
-import ujson as json
 import logging
 import math
 import os
-
+import ujson as json
 
 class MalformedInterventionError(Exception):
   
@@ -134,6 +135,7 @@ class Experiment(object):
     self.compute_distributions(sample_data_dir, data_range)
 
     self.timelag = -1 * max(abs(timelag), (outcome_var.minwindow + 1) * agent.action_repeat)
+    self.lookback = 1
     self.diff_trials = diff_trials
     self.discretization_cutoff = discretization_cutoff
     self.outdir = outdir
@@ -305,8 +307,31 @@ class Experiment(object):
           raise ValueError('Unknown action type:', type(action))
 
         states.append(game.decode(intervention, tb.state_to_json(), game))
-    return states
+    return states      
 
+
+  def in_critical_period(self):
+    # let's see how bad it is to do this sequentially first
+    actions = self.agent.toybox.get_legal_action_set()
+    t = abs(self.timelag)
+    s = self.trace.get_intervention_state(self.agent.toybox, self.timelag)
+    factuals = 1
+    counterfactuals = 0
+  
+    for action in actions:
+      self.agent.reset()
+      self.agent.toybox.write_state_json(s.encode())
+      self.agent.toybox.apply_ale_action(action)
+      self.agent.play('forward_simulate', maxsteps=t, save_states=True)
+      print(len(self.agent.states), len(self.agent.actions))
+      sapairs = list(zip([s] + self.agent.states, self.agent.actions))
+      if self.outcome_var.outcomep(sapairs):
+        factuals += 1
+      if self.counterfactual.outcomep(sapairs):
+        counterfactuals += 1
+    
+    print('factuals: {}\tcounterfactuals: {}'.format(factuals, counterfactuals))
+    return counterfactuals
 
   def run(self):
 
@@ -315,6 +340,15 @@ class Experiment(object):
     while abs(self.timelag) < len(self.trace):
       print('\nLag between intervention and measured outcome: ', abs(self.timelag))    
 
+      if not self.in_critical_period():
+        self.lookback = int(round(self.lookback + self.lookback * normal(0.0, 1.0)))
+        #self.timelag = max(-1 * len(self.trace), self.timelag - self.lookback) # will pick the less negative one
+        self.timelag -= 1
+        print('Not yet in critical period; stepping back to', self.timelag)
+        continue
+
+      self.lookback = 1
+        
       while len(self.interventions) < len(self.mutation_points):
         mutations_attempted = sum([len(tried) for tried in self.interventions.values()])
         t = self.timelag
@@ -372,7 +406,7 @@ class Experiment(object):
 
 
       print(tabulate([(var, len(items)) for (var, items) in self.interventions.items()], headers=['Property', 'Count']))
-      self.timelag = max(-1 * len(self.trace), self.timelag * 2) # will pick the less negative one
+      self.timelag = max(-1 * (len(self.trace) -1), self.timelag + self.lookback * 2) # will pick the less negative one
       print('Doubling lookback to {}; (trace size is {})\n'.format(self.timelag, len(self.trace)))
       self.interventions = OrderedDict()
       self.mutation_points = self.generate_mutation_points()
