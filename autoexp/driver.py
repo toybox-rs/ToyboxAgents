@@ -190,6 +190,7 @@ class Experiment(object):
     self.lookback = 1
     self.diff_trials = diff_trials
     self.discretization_cutoff = discretization_cutoff
+    self.spurious_cutoff = spurious_cutoff
     self.outdir = outdir
 
     self.mutation_points = self.generate_mutation_points()
