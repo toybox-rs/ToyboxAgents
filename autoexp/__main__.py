@@ -20,7 +20,7 @@ import agents
 import autoexp
 
 from autoexp import learn_models, load_states, find_outcome_window
-from autoexp.driver import Experiment
+from autoexp.driver import Experiment, Result
 from autoexp.vars.composite import Composite
 
 parser = argparse.ArgumentParser(description='Search for explanations')
@@ -140,6 +140,7 @@ else:
   agent.play(maxsteps=args.window, write_json_to_file=args.record_json, save_states=True) #, path='ppo2_stuff')
   
   step = len(agent.states)
+  result = Result()
 
   while True:
     action_window = agent.actions[-1 * args.window:]
@@ -154,13 +155,19 @@ else:
       print('\tPredicate applied over time steps [{}, {}]'.format(len(agent.states) - args.window - 1, len(agent.states) - 1), file=sys.stderr)
       outcome_sapairs, counterfactual_sapairs = [], []
             
+    start = max(step - args.window, 0)
+    end = step
     
     if outcome_sapairs and not found_o: 
+      outcome_name = outcome.__class__.__name__
       print('Found outcome {} for {} during window [{}, {}]!'.format(
-          outcome.__class__.__name__, 
+          outcome_name, 
           agent.__class__.__name__, 
-          max(step - args.window, 0), 
-          step))
+          start, 
+          end))
+      result.factual = outcome_name
+      result.factual_start = start
+      result.factual_end = end
       # Want to make sure we don't pick an outcome too early in the game.
       if len(outcome_sapairs) >= 2 * outcome.minwindow:
         Toybox(args.game, withstate=outcome_sapairs[0][0].encode()).save_frame_image('outcome_{}_{}_begin.png'.format(str(outcome), str(agent)))
@@ -170,11 +177,15 @@ else:
         if found_c: break
 
     if counterfactual_sapairs and not found_c: 
+      counterfactual_name = counterfactual.__class__.__name__
       print('Found counterfactual {} for {} during window [{}, {}]!'.format(
           counterfactual.__class__.__name__, 
           agent.__class__.__name__, 
           max(step - args.window, 0), 
           step))
+      result.counterfactual = counterfactual_name
+      result.counterfactual_start = start
+      result.counterfactual_end = end
       Toybox(args.game, withstate=counterfactual_sapairs[0][0].encode()).save_frame_image('counterfactual_{}_{}_begin.png'.format(str(counterfactual), str(agent)))
       Toybox(args.game, withstate=counterfactual_sapairs[-1][0].encode()).save_frame_image('counterfactual_{}_{}_end.png'.format(str(counterfactual), str(agent)))
       found_c = True
@@ -207,12 +218,14 @@ exp = Experiment(
   trace=trace,
   agent=agent, 
   outdir=args.outdir,
-  discretization_cutoff=3
+  discretization_cutoff=10,
+  result=result
 )
 num_mut_pts = len(exp.mutation_points)
-start = timer()
+result.timer_start = timer()
 intervened_state, intervened_outcome = exp.run()
-end = timer()
+result.timer_end = timer()
+
 print('Num mutation points: {}'.format(num_mut_pts))
 print('Num interventions attempted: {}'.format(sum(len(items) for items in exp.interventions.values())))
-print('Elapsed time: {}'.format(end - start))
+print('Elapsed time: {}'.format(result.timer_end - result.timer_start))

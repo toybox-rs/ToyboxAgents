@@ -29,6 +29,7 @@ except:
 import logging
 import math
 import os
+import scipy
 import ujson as json
 
 class MalformedInterventionError(Exception):
@@ -97,6 +98,52 @@ class Trace(object):
     return game.decode(intervener, self.get_state_trace()[timelag].encode(), game)
 
 
+class Result(object):
+
+  def __init__(self):
+    self.factual = None
+    self.factual_start = None
+    self.factual_end = None
+    self.ffactual = None
+
+    self.counterfactual = None
+    self.counterfactual_start = None
+    self.counterfactual_end = None
+    self.fcounterfactual = None
+
+    self.expl_var = None
+    self.expl_val = None
+    self.expl_ffactual = None
+    self.expl_fcounterfactual = None
+    
+    # The timer for the whole process
+    self.timer_start = None
+    self.timer_end = None
+
+    # The critical timestep (first opportunity for intervention)
+    self.tc = None
+
+    self.baselinereps = None
+
+    self.oddsratio = None
+    self.oddspvalue = None
+    self.spurious = 0
+
+  def __str__(self):
+    return 'Factual: {} [{}, {}]'.format(self.factual, self.factual_start, self.factual_end) \
+      + '\nCounterfactual: {} [{}, {}]'.format(self.counterfactual, self.counterfactual_start, self.counterfactual_end) \
+      + '\nTc: {}'.format(self.factual_end + self.tc) \
+      + '\nP(Yf| window, policy) = {}/{}'.format(self.ffactual, self.baselinereps) \
+      + '\nP(Yc| window, policy) = {}/{}'.format(self.fcounterfactual, self.baselinereps) \
+      + '\nInduced counterfactual with {} = {}'.format(self.expl_var, self.expl_val) \
+      + '\nP(Yf | window, policy, do(X)) = {}/{}'.format(self.expl_ffactual, self.baselinereps) \
+      + '\nP(Yc | window, policy, do(X)) = {}/{}'.format(self.expl_fcounterfactual, self.baselinereps) \
+      + '\nOdds: {} (pvalue, fisher exact test: {})'.format(self.oddsratio, self.oddspvalue)
+
+  def __del__(self):
+    print(self)
+
+
 class Experiment(object):
 
   def __init__(self, 
@@ -116,8 +163,13 @@ class Experiment(object):
     atomic_constraints: Set[str] = set(), #regexes
     timelag = 1,
     diff_trials = 30,
-    discretization_cutoff = 5,
-    outdir='exp'):
+    discretization_cutoff = 10,
+    # The percentage of eligible mutation points that are detected as
+    # spurious explanations before we determine that this time point 
+    # is suceptible to random actions.
+    spurious_cutoff = 0.1,
+    outdir='exp',
+    result=None):
     # presumably the context was manually selected to be true?
     # think about/add this later
     self.game_name = game_name
@@ -143,6 +195,8 @@ class Experiment(object):
     self.mutation_points = self.generate_mutation_points()
     self.interventions : Dict[Var, List[Any]] = OrderedDict()
     os.makedirs(outdir, exist_ok=True)
+
+    self.result = result
 
   def compute_distributions(self, sample_data_dir, data_range):
     data = []
@@ -323,15 +377,31 @@ class Experiment(object):
       self.agent.toybox.write_state_json(s.encode())
       self.agent.toybox.apply_ale_action(action)
       self.agent.play('forward_simulate', maxsteps=t, save_states=True)
-      print(len(self.agent.states), len(self.agent.actions))
-      sapairs = list(zip([s] + self.agent.states, self.agent.actions))
+      sapairs = list(zip(self.agent.states, self.agent.actions))
       if self.outcome_var.outcomep(sapairs):
         factuals += 1
       if self.counterfactual.outcomep(sapairs):
         counterfactuals += 1
     
     print('factuals: {}\tcounterfactuals: {}'.format(factuals, counterfactuals))
-    return counterfactuals
+    # It has to be possible to detect both/either of these at the given time point.
+    return counterfactuals > 0 and factuals > 0
+
+  def compute_frequency(self, outcome=None, start_state=None, steps=None, reps=100):
+    """Computes the frequency of the outcome under the current policy from the input state for steps."""
+    self.result.baselinereps = reps
+    n = reps
+    ct = 0
+    while n > 0:
+      self.agent.reset()
+      self.agent.toybox.write_state_json(start_state.encode())
+      self.agent.play('baseline_' + outcome.__class__.__name__, maxsteps=steps, save_states=True)
+      sapairs = list(zip(self.agent.states, self.agent.actions))
+      if outcome.outcomep(sapairs):
+        ct += 1
+      n -= 1
+    return ct
+    
 
   def run(self):
 
@@ -341,12 +411,28 @@ class Experiment(object):
       print('\nLag between intervention and measured outcome: ', abs(self.timelag))    
 
       if not self.in_critical_period():
-        self.lookback = int(round(self.lookback + self.lookback * normal(0.0, 1.0)))
+        #self.lookback = int(round(self.lookback + self.lookback * normal(0.0, 1.0)))
         #self.timelag = max(-1 * len(self.trace), self.timelag - self.lookback) # will pick the less negative one
+        if abs(self.timelag) > len(self.trace):
+          print('No time period in window size {} where a single action difference would change the outcome.'.format(len(self.trace)))
+          exit(0)
         self.timelag -= 1
         print('Not yet in critical period; stepping back to', self.timelag)
         continue
 
+      self.result.tc = self.timelag
+      self.result.ffactual = self.compute_frequency(
+          outcome     = self.outcome_var, 
+          start_state = self.trace[self.timelag][0],
+          steps       = abs(self.timelag),
+          reps        = 100
+        )
+      self.result.fcounterfactual = self.compute_frequency(
+          outcome     = self.counterfactual,
+          start_state = self.trace[self.timelag][0],
+          steps       = abs(self.timelag),
+          reps        = 100
+        )
       self.lookback = 1
         
       while len(self.interventions) < len(self.mutation_points):
@@ -396,7 +482,35 @@ class Experiment(object):
           if counterfactual_outcome and not factual_outcome:
             print('Original and intervened outcome differ for property', prop)
             print(tabulate([(var, len(items)) for (var, items) in self.interventions.items()], headers=['Property', 'Count']))
-            return s1_, counterfactual_outcome
+            self.result.expl_var = prop
+            self.result.expl_val = after 
+            self.result.expl_ffactual = self.compute_frequency(
+              outcome     = self.outcome_var,
+              start_state = s1_,
+              steps       = abs(self.timelag),
+              reps        = 100
+            )
+            self.result.expl_fcounterfactual = self.compute_frequency(
+              outcome     = self.counterfactual,
+              start_state = s1_,
+              steps       = abs(self.timelag),
+              reps        = 100
+            )
+            odds_ratio, pvalue = scipy.stats.fisher_exact([
+              [self.result.expl_ffactual,        self.result.ffactual],
+              [self.result.expl_fcounterfactual, self.result.fcounterfactual]])
+            print('odds ratio:', odds_ratio, 'pvalue', pvalue)
+            # Using the traditional p-value of 0.05 because the point here is that
+            # we can detect an effect that humans would think is sufficiently likely
+            # and there is probably an argument to be made that we have all been trained
+            # to treat p<0.05 as a significant value.
+            if abs(odds_ratio - 1) > 0.1 and pvalue < 0.05:
+              return s1_, counterfactual_outcome
+            else: 
+              print('Intervention did not significantly change the probability of the outcome.')
+              self.result.spurious += 1
+              if self.result.spurious > 2 and self.result.spurious > self.spurious_cutoff * len(self.mutation_points):
+                print('Too many spurious explanations ({}); agent is likely acting randomly.'.format(self.result.spurious))
 
         except LikelyConstantError as e:
           print('\t' + str(e))
