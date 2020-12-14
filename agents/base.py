@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from ctoybox import Toybox, Input
-from rl.core import Agent as KAgent
+from rl.core import Agent as KAgent, Processor
 from typing import Union, List
 from toybox.envs.atari.constants import ACTION_MEANING
 from toybox.interventions import Game, state_from_toybox
@@ -63,7 +63,7 @@ def string_to_input(action: str) -> Input:
 
 
 
-class Agent(KAgent):
+class Agent(KAgent, ABC):
 
     def __init__(self, toybox: Toybox, 
         seed = 1234, 
@@ -182,20 +182,23 @@ class Agent(KAgent):
     
     # keras-rl required stuff
 
-    def forward(self):
+    def forward(self, processor: Processor):
         return self.step()
 
-    def backward(self):
+    @abstractmethod
+    def backward(self, processor:  Processor):
         pass
 
-    def compile(self):
+    # The remainder of these methods are only required for
+    # agents backed by deep nets.
+    def compile(self, processor:  Processor):
         pass
 
-    def load_weights(self):
+    def load_weights(self,  processor: Processor):
         pass
 
-    def save_weights(self):
+    def save_weights(self, processor:  Processor):
         pass
 
-    def layers(self):
+    def layers(self, processor:  Processor):
         pass

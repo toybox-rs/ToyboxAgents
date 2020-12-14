@@ -6,3 +6,4 @@ pymonad
 gym[atari]==0.10.5
 tensorflow<2.0
 ujson
+keras-rl
