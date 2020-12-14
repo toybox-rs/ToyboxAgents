@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Union, List
 from ctoybox import Toybox, Input
+from rl.core import Agent as KAgent
+from typing import Union, List
 from toybox.envs.atari.constants import ACTION_MEANING
 from toybox.interventions import Game, state_from_toybox
 import os, signal
@@ -62,9 +63,12 @@ def string_to_input(action: str) -> Input:
 
 
 
-class Agent(ABC):
+class Agent(KAgent):
 
-    def __init__(self, toybox: Toybox, seed = 1234, action_repeat=1):
+    def __init__(self, toybox: Toybox, 
+        seed = 1234, 
+        action_repeat = 1, 
+        path = None):
         self.toybox = toybox
         self.name = self.__class__.__name__
         self._frame_counter = 0
@@ -72,6 +76,7 @@ class Agent(ABC):
         self.actions : List[Union[str, int]] = []
         self.states : List[Game] = []
         self._reset_seed(seed)
+        self.path = path
 
     def __str__(self):
         return self.__class__.__name__
@@ -124,7 +129,8 @@ class Agent(ABC):
         if seed:
             self._reset_seed(seed)
 
-    def step(self, path, write_json_to_file, save_states):
+    def step(self, path = None, write_json_to_file = True, save_states = True):
+        path = path or self.path
         action = self.get_action()
         self.actions.append(action)
 
@@ -172,3 +178,24 @@ class Agent(ABC):
             if save_states: self.states.append(None)
  
         if path: self.save_actions(path)
+
+    
+    # keras-rl required stuff
+
+    def forward(self):
+        return self.step()
+
+    def backward(self):
+        pass
+
+    def compile(self):
+        pass
+
+    def load_weights(self):
+        pass
+
+    def save_weights(self):
+        pass
+
+    def layers(self):
+        pass
