@@ -8,12 +8,7 @@ class ToyboxProcessorImage(Processor):
     # Copied and modified from
     # https://github.com/keras-rl/keras-rl/blob/master/examples/dqn_atari.py
     def process_observation(self, tb: Toybox):
-        assert observation.ndim == 3
-        # I think we can just grab the grayscale from tb
-        # then we won't need the next two lines
-        img = Image.fromarray(observation)
-        img = img.resize(INPUT_SHAPE).CONVERT('L')
-        processed_observation
+        processed_observation = 
 
 
 class SARSAImage(BreakoutAgent, SARSAAgent):
