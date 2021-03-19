@@ -115,6 +115,17 @@ class Agent(ABC):
     @abstractmethod
     def get_action(self) -> Input: pass
 
+    @staticmethod
+    def random_action() -> Input:
+        r_in = Input()
+        hdir = random.choice([Input._LEFT, Input._RIGHT, Input._NOOP])
+        vdir = random.choice([Input._UP, Input._DOWN, Input._NOOP])
+        b_act = random.choice([Input._NOOP, Input._BUTTON1, Input._BUTTON2])
+
+        r_in.set_input(hdir)
+        r_in.set_input(vdir, b_act)
+        return r_in
+
     def reset(self, seed=None):
         # Should we also reset/call new game for toybox in here?
         self.toybox.new_game()
