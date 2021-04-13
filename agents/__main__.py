@@ -34,10 +34,11 @@ with Toybox(game_lower) as tb:
 
     path = args.output + (os.sep + str(args.seed) if args.seed else '')
 
-    # Need to get the ball (i.e., start the game)
-    input = Input()
-    input.button1 = True
-    tb.apply_action(input)  
+    if game_lower == 'breakout':
+        # Need to get the ball (i.e., start the game)
+        input = Input()
+        input.button1 = True
+        tb.apply_action(input)
 
 
     agent_str = 'agents.' + game_lower + '.' + args.agentclass.lower() + '.' + args.agentclass
