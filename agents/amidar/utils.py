@@ -66,28 +66,50 @@ def index_junctions(intervention):
 
     return adj_mat, junction_tile_to_id, junction_id_to_tile
 
-def index_segments(intervention, adj_mat):
+def index_segments(intervention, adj_mat, junction_id_to_tile):
     tile_to_segment_id = {}
     for tile in intervention.filter_tiles(lambda t: t.tag != ami.Tile.Empty):
-        tile_to_segment_id[tile] = []
-    nsegments = sum(adj_mat)
+        tp = intervention.tile_to_tilepoint(tile)
+        rid = tile_to_route_id(intervention, tp.tx, tp.ty)
+        tile_to_segment_id[rid] = set()
+    nsegments = sum(sum(adj_mat))/2
     segments = []
     segment_id_to_tile_set = {}
     for seg in segments:
-        segment_id_to_tile_set[seg] = []
+        segment_id_to_tile_set[seg] = set()
     # add all segment tiles to set
-    if True: # for every self.adj_mat > 1
-        pass
-        # seg = seg_id
-        # seg_tiles = []
-        # if tx1 == tx2:
-            # add all change in ys
-            # seg_tiles.append()
-        # elif ty1 == ty2:
-            # add all change in xs
-            # seg_tiles.append()
-        # add segment id to tile list
-        # for tile in seg_tiles:
-            # tile_to_segment_id[tile].append(seg)
-        # segment_id_to_tile_set[seg] = seg_tiles
+    for e1 in range(adj_mat.shape[0]): # for every self.adj_mat > 1
+        for e2 in range(e1,adj_mat.shape[1]): # just loop over triangle
+            if adj_mat[e1,e2]:                # adj_mat is symmetric
+                segments.append((e1,e2))
+                seg_id = len(segments)
+                segtiles = set()
+
+                tid_e1 = junction_id_to_tile[e1]
+                tid_e2 = junction_id_to_tile[e2]
+                if tid_e1[0] == tid_e2[0]:
+                    emin = min(tid_e1[1], tid_e2[1])
+                    emax = max(tid_e1[1], tid_e2[1])
+
+                    for yy in range(emin, emax+1):
+                        tp = ami.TilePoint(intervention, tx=tid_e1[0], ty=yy)
+                        rid = tile_to_route_id(intervention, tp.tx, tp.ty)
+                        segtiles.add(rid)
+                elif tid_e1[1] == tid_e2[1]:
+                    emin = min(tid_e1[0], tid_e2[0])
+                    emax = max(tid_e1[0], tid_e2[0])
+
+                    for xx in range(emin, emax+1):
+                        tp = ami.TilePoint(intervention, tx=xx, ty=tid_e1[1])
+                        rid = tile_to_route_id(intervention, tp.tx, tp.ty)
+                        segtiles.add(rid)
+
+                # add segment id to tile list
+                for rid in segtiles:
+                    tile_to_segment_id[rid].add(seg_id)
+                segment_id_to_tile_set[seg_id] = segtiles
+    for k in segment_id_to_tile_set.keys():
+        segment_id_to_tile_set[k] = list(segment_id_to_tile_set[k])
+    for k in tile_to_segment_id.keys():
+        tile_to_segment_id[k] = list(tile_to_segment_id[k])
     return segments, tile_to_segment_id, segment_id_to_tile_set
