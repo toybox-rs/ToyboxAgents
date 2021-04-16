@@ -6,7 +6,9 @@ from . utils import tilepoint_lookup, index_junctions, tile_to_route_id, index_s
 class JunctionWalker(AmidarAgent):
 
   def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
+    self.seed = 1984  # party
+    super().__init__(seed=self.seed, *args, **kwargs)
+    self.heading_tilepoint = None  # amidar.TilePoint()
     # set up junction, segment index
     with amidar.AmidarIntervention(self.toybox) as intervention:
       # crawl the board to get  junction ids and adjacency
@@ -30,9 +32,6 @@ class JunctionWalker(AmidarAgent):
       for k in self.segment_junction_lookup.keys():
         self.segment_junction_lookup[k] = list(self.segment_junction_lookup[k])
 
-    self.heading_tilepoint = None # amidar.TilePoint()
-    self.seed = 1984 # party
-    self._reset_seed(self.seed)
 
   def get_new_heading(self, intervention, ptp, junctions_for_player_tile):
     cur_tile_key = (ptp.tx, ptp.ty)
