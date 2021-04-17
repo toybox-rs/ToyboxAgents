@@ -48,6 +48,9 @@ class StayAlive(AmidarAgent):
         next_options = [t for t in next_options if amidar.AmidarIntervention.is_tile_walkable(t.tag)]
         #dir = intervention.get_random_dir_for_tile(ptile)
         # choose direction that moves away from closest enemy & take corners around junctions
+        # one option is to use an LQR model to select the direction
+        # maximally opposite the sum velocity of enemy movement vectors
+        # weighted by enemy distance from agent, say
         e_dists = []
         pass
 
