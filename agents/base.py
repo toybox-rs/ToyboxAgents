@@ -60,6 +60,29 @@ def string_to_input(action: str) -> Input:
         actobj.button2 = True
         return actobj
 
+def ALE_string_to_input(action: str) -> Input:
+    action = action.lower()
+    actobj = Input()
+    if action is None or not len(action):
+        return actobj
+    if 'left' in action:
+        actobj.left = True
+        return actobj
+    if 'right' in action:
+        actobj.right = True
+        return actobj
+    if 'up' in action:
+        actobj.up = True
+        return actobj
+    if 'down' in action:
+        actobj.down = True
+        return actobj
+    if 'fire' in action or 'button1' in action:
+        actobj.button1 = True
+        return actobj
+    if 'button2' in action:
+        actobj.button2 = True
+        return actobj
 
 
 class Agent(ABC):
