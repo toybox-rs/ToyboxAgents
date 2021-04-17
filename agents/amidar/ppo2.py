@@ -12,7 +12,7 @@ import numpy
 class PPO2(AmidarAgent):
 
     def __init__(self, toybox: Toybox, *args, withstate=None,
-                 model_path='ijcai20/models/AmidarToyboxNoFrameskip-v4.ppo2.1e7.block12.2020-01-14.model', # infstart 1e7
+                 model_path='data/AmidarToyboxNoFrameskip-v4.regress', # infstart 1e7
                  **kwargs):
         # The action_repeat value comes from the skip argument of
         # MaxAndSkipEnv in atari_wrappers.py
