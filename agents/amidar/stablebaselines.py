@@ -13,14 +13,14 @@ from stable_baselines3 import DQN, A2C, PPO
 
 class StableBaselines(Agent, ABC):
 
-    def __init__( self, toybox: Toybox, seed = 1234, action_repeat=4, *args, withstate = None,
+    def __init__( self, toybox: Toybox, seed = 1234, action_repeat=4, frame_stack_size=1, *args, withstate = None,
       model_name = 'A2C', model_path = 'data/stablebaselines_a2c_amidar_1e4.regress.zip',
       additional_wrappers=lambda env: env,
       deterministic = False,
       ** kwargs):
 
       nenv = 1 # stable-baselines agents
-      frame_stack_size = 1
+      frame_stack_size = frame_stack_size
       env_type = 'atari'
       family = model_name
 
