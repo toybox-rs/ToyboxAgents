@@ -74,7 +74,7 @@ class StableBaselines(Agent, ABC):
     @staticmethod
     def setUpToyboxGym(agentclass, env_id, seed, frame_stack_size=4, additional_wrappers = lambda env: env):
         env = gym.make(env_id, alpha=False,
-                       grayscale=False)  # gym needs these tb constructor args with make_atari_env
+                               grayscale=True)  # gym needs these tb constructor args with make_atari_env
         # allow a custom wrapper
         env = additional_wrappers(env)
         env = AtariWrapper(env, frame_skip=agentclass.action_repeat)
