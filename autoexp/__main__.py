@@ -81,6 +81,14 @@ parser.add_argument('--learnvarsonly',
   action='store_true',
   help='Only learn empirical probability distributions for the composite variables.'
   )
+parser.add_argument('--max_training_states', 
+  default=1e5,
+  help='Total number of training states to consider.')
+parser.add_argument('--only_learn',
+  default=False,
+  action='store_true',
+  help='Flag that, when used, only learns the data distribution.'
+)
 
 args = parser.parse_args()
 
@@ -114,12 +122,17 @@ if args.datadir:
   for d in args.datadir:
     print('Loading states from', d)
     training_states.extend(load_states(d, args.game))
+    if len(training_states) > args.max_training_states:
+      break
   if not args.learnvarsonly:
     print('Learning marginals for atomic attributes.')
     learn_models(training_states, args.model, args.game)
   for var in composite_vars:
     print('Learning marginal for', str(var))
     var.make_models(args.model, training_states)
+
+if args.only_learn:
+  exit(0)
 
 trace: Optional[List[Tuple[Game, str]]] = None
 
