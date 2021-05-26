@@ -14,6 +14,7 @@ parser.add_argument('--root', help='You probably want your work1 location on swa
 parser.add_argument('--email', help='The email to send notifications to', default=None)
 parser.add_argument('--agent', help='The agent you want to sample from')
 parser.add_argument('--nepisodes', help='The number of episodes to generate', default=30, type=int)
+parser.add_argument('--pngs', help='Record the frames as pngs', default=False)
 args = parser.parse_args()
 root = args.root
 
@@ -42,6 +43,7 @@ for agent in agents:
     for _ in range(args.nepisodes):
         seed = random.randint(0, 1e7)
         seeds.append(seed)
+        rmpngs = 'rm {1}{0}{2}{0}{3}{0}{4}{0}*.png'.foramt(os.sep, args.root, agent, seed) if not args.pngs else ""
         cmdfile = '{0}run_{1}_{2}.sh'.format(script_path, agent, seed)
 
         with open(cmdfile, 'w') as f:
@@ -62,7 +64,8 @@ mkdir -p {2}/{0}/{1}
 rm {2}/{0}/{1}/*
 python -m agents --game Breakout --output {2}/{0} --agentclass {0} --seed {1}
 zip {3} {2}/{0}/*
-""".format(agent, seed, root, tarfile, args.email)
+{5}
+""".format(agent, seed, root, tarfile, args.email, rmpngs)
             f.write(content)
 
         try:
