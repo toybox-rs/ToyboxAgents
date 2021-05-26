@@ -9,6 +9,7 @@ import sys
 
 from timeit import default_timer as timer
 from typing import Optional, List, Tuple, Set
+from random import shuffle
 
 
 from ctoybox import Input, Toybox
@@ -34,7 +35,7 @@ parser.add_argument('--datadir',
   nargs='*',
   help='The directory/directories where we store data for training the sampler')
 parser.add_argument('--agent',
-  required=True,
+  # required=True,
   nargs='+',
   help='The agent class for this experiment.')
 parser.add_argument('--seed', 
@@ -75,7 +76,7 @@ parser.add_argument('--record_json',
   action='store_true',
   help='Flag that, when used, records the state json for every experiment.')
 parser.add_argument('--outdir',
-  required=True,
+  # required=True,
   help='Where to store the logged experiment data.')
 parser.add_argument('--learnvarsonly', 
   action='store_true',
@@ -98,6 +99,33 @@ importlib.import_module('autoexp.outcomes.' + args.game)
 outcome = eval('outcomes.' + args.game + '.' + args.outcome[0])(*args.outcome[1:])
 counterfactual = eval('outcomes.' + args.game + '.' + args.counterfactual[0])(*args.counterfactual[1:])
 
+
+composite_vars : Set[Composite] = set()
+if args.vars:
+  importlib.import_module('.vars.composite.' + args.game, package='autoexp')
+  composite_vars = set([eval('autoexp.vars.composite.' + args.game + '.' + v)(args.model) for v in args.vars])
+
+if args.datadir: 
+  print('Learning models for on {} from {}'.format(args.game, args.datadir))
+  training_states = []
+  shuffle(args.datadir)
+  for d in args.datadir:
+    print('Loading states from', d)
+    training_states.extend(load_states(d, args.game))
+    if len(training_states) > args.max_training_states:
+      break
+
+  if not args.learnvarsonly:
+    print('Learning marginals for atomic attributes.')
+    learn_models(training_states, args.model, args.game)
+
+  for var in composite_vars:
+    print('Learning marginal for', str(var))
+    var.make_models(args.model, training_states)
+
+if args.only_learn:
+  exit(0)
+
 agent_mod = '.'.join(['agents', args.game, args.agent[0].lower()])
 importlib.import_module(agent_mod)
 tb = Toybox(args.game, seed=args.seed)
@@ -111,28 +139,6 @@ for term in args.agent[1:]:
     arglist.append(term)
 agent = eval(agent_mod + '.' + args.agent[0])(tb, *arglist, seed=args.seed, **kwargs)
 
-composite_vars : Set[Composite] = set()
-if args.vars:
-  importlib.import_module('.vars.composite.' + args.game, package='autoexp')
-  composite_vars = set([eval('autoexp.vars.composite.' + args.game + '.' + v)(args.model) for v in args.vars])
-
-if args.datadir: 
-  print('Learning models for {} on {} from {}'.format(str(agent), args.game, args.datadir))
-  training_states = []
-  for d in args.datadir:
-    print('Loading states from', d)
-    training_states.extend(load_states(d, args.game))
-    if len(training_states) > args.max_training_states:
-      break
-  if not args.learnvarsonly:
-    print('Learning marginals for atomic attributes.')
-    learn_models(training_states, args.model, args.game)
-  for var in composite_vars:
-    print('Learning marginal for', str(var))
-    var.make_models(args.model, training_states)
-
-if args.only_learn:
-  exit(0)
 
 trace: Optional[List[Tuple[Game, str]]] = None
 
