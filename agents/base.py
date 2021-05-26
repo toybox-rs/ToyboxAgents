@@ -63,7 +63,7 @@ def string_to_input(action: str) -> Input:
 
 
 
-class Agent(KAgent, ABC):
+class Agent(ABC):
 
     def __init__(self, toybox: Toybox, 
         seed = 1234, 
@@ -182,23 +182,23 @@ class Agent(KAgent, ABC):
     
     # keras-rl required stuff
 
-    def forward(self, processor: Processor):
-        return self.step()
+    # def forward(self, processor: Processor):
+    #     return self.step()
 
-    @abstractmethod
-    def backward(self, processor:  Processor):
-        pass
+    # @abstractmethod
+    # def backward(self, processor:  Processor):
+    #     pass
 
-    # The remainder of these methods are only required for
-    # agents backed by deep nets.
-    def compile(self, processor:  Processor):
-        pass
+    # # The remainder of these methods are only required for
+    # # agents backed by deep nets.
+    # def compile(self, processor:  Processor):
+    #     pass
 
-    def load_weights(self,  processor: Processor):
-        pass
+    # def load_weights(self,  processor: Processor):
+    #     pass
 
-    def save_weights(self, processor:  Processor):
-        pass
+    # def save_weights(self, processor:  Processor):
+    #     pass
 
-    def layers(self, processor:  Processor):
-        pass
+    # def layers(self, processor:  Processor):
+    #     pass
