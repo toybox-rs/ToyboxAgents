@@ -9,12 +9,15 @@ import argparse
 import time, datetime
 
 parser = argparse.ArgumentParser()
+parser.add_help('A utility for generating sample data for an agent')
 parser.add_argument('root', help='You probably want your work1 location on swarm and \'.\' on your local machine.')
 parser.add_argument('email', help='The email to send notifications to', default=None)
+parser.add_argument('agent', help='The agent you want to sample from')
 args = parser.parse_args()
 root = args.root
 
-agents =  ['StayAlive', 'SmarterStayAlive', 'StayAliveJitter', 'Target']
+#agents =  ['StayAlive', 'SmarterStayAlive', 'StayAliveJitter', 'Target']
+agents = [args.agent]
 timestamp = datetime.datetime.now()
 time_str = timestamp.strftime('%y%m%d_%H%M')
 script_path = 'scripts{0}slurm{0}{1}{0}'.format(os.sep, time_str)
