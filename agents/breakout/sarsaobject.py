@@ -1,20 +1,21 @@
 from . import *
-from rl.agents.sarsa import SARSAAgent
-from r.core import Processor
-# should be able to remove this when we swap in tb stuff
-from PIL import Image
+from random import seed
+import pickle
 
-class ToyboxProcessorObject(Processor):
-    # Copied and modified from
-    # https://github.com/keras-rl/keras-rl/blob/master/examples/dqn_atari.py
-    def process_observation(self, observation):
-        assert observation.ndim == 3
-        # I think we can just grab the grayscale from tb
-        # then we won't need the next two lines
-        img = Image.fromarray(observation)
-        img = img.resize(INPUT_SHAPE).CONVERT('L')
-        processed_observation
+class SARSAObject(BreakoutAgent):
+    
+    def __init__(self, *args, **kwargs):
+        if 'load_data' in kwargs:
+            self.qtable  = pickle.load(file(kwargs['load_data'], 'r'))
+        
+        super().__init__(*args, **kwargs)
+        seed(self.seed)
 
 
-class SARSAObject(BreakoutAgent, SARSAAgent):
-    pass
+    def train(self, env, maxsteps=1e7):
+        step = 0
+        eps = 1.0
+        while steps < maxsteps:
+
+       input = Input()
+

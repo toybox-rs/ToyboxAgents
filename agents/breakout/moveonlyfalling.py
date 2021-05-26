@@ -15,6 +15,8 @@ class MoveOnlyFalling(BreakoutAgent):
         self.ball_moving_down = None
         self.ball_prevY = None
 
+    def backward(self): pass
+
     def get_action(self):
         input = Input()
         with breakout.BreakoutIntervention(self.toybox) as intervention:

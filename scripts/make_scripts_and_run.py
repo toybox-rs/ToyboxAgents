@@ -13,6 +13,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--root', help='You probably want your work1 location on swarm and \'.\' on your local machine.')
 parser.add_argument('--email', help='The email to send notifications to', default=None)
 parser.add_argument('--agent', help='The agent you want to sample from')
+parser.add_argument('--nepisodes', help='The number of episodes to generate', default=30, type=int)
 args = parser.parse_args()
 root = args.root
 
@@ -38,7 +39,7 @@ for agent in agents:
     print('Creating or overwriting empty zip file: %s' % tarfile)
     with zipfile.ZipFile(tarfile, 'w') as f: pass
     # run for 30 trials each
-    for _ in range(30):
+    for _ in range(args.nepisodes):
         seed = random.randint(0, 1e7)
         seeds.append(seed)
         cmdfile = '{0}run_{1}_{2}.sh'.format(script_path, agent, seed)
@@ -64,7 +65,11 @@ zip {3} {2}/{0}/*
 """.format(agent, seed, root, tarfile, args.email)
             f.write(content)
 
-        subprocess.run(['sbatch', cmdfile])
+        try:
+            subprocess.run(['sbatch', cmdfile])
+        except:
+            subprocess.call(['chmod', '+x', cmdfile])
+            subprocess.run(cmdfile)
         time.sleep(2)
         
 with open(script_path + os.sep + 'seeds.txt', 'w') as f:
