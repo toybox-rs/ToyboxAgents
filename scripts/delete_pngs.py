@@ -1,7 +1,8 @@
-# !/bin/env/python
+# !/usr/bin/env python3
 # farms out deleting pngs on slurm
 import os
 import argparse
+import subprocess
 
 parser = argparse.ArgumentParser()
 #parser.add_help('A utility for generating sample data for an agent')
@@ -11,4 +12,4 @@ args = parser.parse_args()
 
 datadir = '{1}{0}{2}{0}'.format(os.sep, args.root, args.agent)
 for seed in os.listdir(datadir):
-    os.subprocess(["sbatch", "--wrap=\"rm {}{}{}*.png\"".format(datadir, seed, os.sep)])
+    subprocess.run(["sbatch", "--wrap=\"rm {}{}{}*.png\"".format(datadir, seed, os.sep)])
