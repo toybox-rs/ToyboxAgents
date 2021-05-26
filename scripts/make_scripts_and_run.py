@@ -9,7 +9,7 @@ import argparse
 import time, datetime
 
 parser = argparse.ArgumentParser()
-parser.add_help('A utility for generating sample data for an agent')
+#parser.add_help('A utility for generating sample data for an agent')
 parser.add_argument('root', help='You probably want your work1 location on swarm and \'.\' on your local machine.')
 parser.add_argument('email', help='The email to send notifications to', default=None)
 parser.add_argument('agent', help='The agent you want to sample from')
